@@ -35,12 +35,35 @@ struct TopOffApp: App {
             Toggle("Launch at Login", isOn: $viewModel.launchAtLogin)
 
             Menu("Check Interval") {
-                Picker("", selection: $viewModel.checkInterval) {
-                    Text("Every hour").tag(3600.0)
-                    Text("Every 4 hours").tag(14400.0)
-                    Text("Every 12 hours").tag(43200.0)
-                    Text("Every 24 hours").tag(86400.0)
-                    Text("Manual only").tag(0.0)
+                Button {
+                    viewModel.checkInterval = 3600
+                } label: {
+                    if viewModel.checkInterval == 3600 { Text("✓ Every hour") }
+                    else { Text("    Every hour") }
+                }
+                Button {
+                    viewModel.checkInterval = 14400
+                } label: {
+                    if viewModel.checkInterval == 14400 { Text("✓ Every 4 hours") }
+                    else { Text("    Every 4 hours") }
+                }
+                Button {
+                    viewModel.checkInterval = 43200
+                } label: {
+                    if viewModel.checkInterval == 43200 { Text("✓ Every 12 hours") }
+                    else { Text("    Every 12 hours") }
+                }
+                Button {
+                    viewModel.checkInterval = 86400
+                } label: {
+                    if viewModel.checkInterval == 86400 { Text("✓ Every 24 hours") }
+                    else { Text("    Every 24 hours") }
+                }
+                Button {
+                    viewModel.checkInterval = 0
+                } label: {
+                    if viewModel.checkInterval == 0 { Text("✓ Manual only") }
+                    else { Text("    Manual only") }
                 }
             }
 
