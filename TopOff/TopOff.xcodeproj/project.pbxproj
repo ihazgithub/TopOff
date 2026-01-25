@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		A1B2C3D4E5F60001 /* TopOffApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60011 /* TopOffApp.swift */; };
 		A1B2C3D4E5F60002 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60012 /* Assets.xcassets */; };
+		A1B2C3D4E5F60003 /* BrewService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60015 /* BrewService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -17,6 +18,7 @@
 		A1B2C3D4E5F60012 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A1B2C3D4E5F60013 /* TopOff.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = TopOff.entitlements; sourceTree = "<group>"; };
 		A1B2C3D4E5F60014 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A1B2C3D4E5F60015 /* BrewService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrewService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -42,6 +44,7 @@
 			isa = PBXGroup;
 			children = (
 				A1B2C3D4E5F60011 /* TopOffApp.swift */,
+				A1B2C3D4E5F60015 /* BrewService.swift */,
 				A1B2C3D4E5F60012 /* Assets.xcassets */,
 				A1B2C3D4E5F60013 /* TopOff.entitlements */,
 				A1B2C3D4E5F60014 /* Info.plist */,
@@ -127,6 +130,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A1B2C3D4E5F60001 /* TopOffApp.swift in Sources */,
+				A1B2C3D4E5F60003 /* BrewService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
