@@ -53,6 +53,19 @@ final class BrewService {
         Self.findBrewPath()
     }
 
+    func checkOutdated() async throws -> [String] {
+        guard let brewPath = brewPath else {
+            throw BrewError.brewNotFound
+        }
+
+        // Run brew update first to refresh package info
+        _ = try await runCommand(brewPath, arguments: ["update"])
+
+        // Then check what's outdated
+        let output = try await runCommand(brewPath, arguments: ["outdated"])
+        return output.components(separatedBy: .newlines).filter { !$0.isEmpty }
+    }
+
     func updateAll(greedy: Bool = false) async throws -> UpdateResult {
         guard let brewPath = brewPath else {
             throw BrewError.brewNotFound

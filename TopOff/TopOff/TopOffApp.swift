@@ -6,6 +6,13 @@ struct TopOffApp: App {
 
     var body: some Scene {
         MenuBarExtra {
+            // Outdated packages count
+            if !viewModel.outdatedPackages.isEmpty {
+                Text("\(viewModel.outdatedPackages.count) update\(viewModel.outdatedPackages.count == 1 ? "" : "s") available")
+                    .foregroundStyle(.secondary)
+                Divider()
+            }
+
             Button("Update All") {
                 viewModel.updateAll(greedy: false)
             }
@@ -16,9 +23,26 @@ struct TopOffApp: App {
             }
             .disabled(viewModel.isRunning)
 
+            Button("Check for Updates") {
+                Task {
+                    await viewModel.checkForUpdates()
+                }
+            }
+            .disabled(viewModel.isRunning)
+
             Divider()
 
             Toggle("Launch at Login", isOn: $viewModel.launchAtLogin)
+
+            Menu("Check Interval") {
+                Picker("", selection: $viewModel.checkInterval) {
+                    Text("Every hour").tag(3600.0)
+                    Text("Every 4 hours").tag(14400.0)
+                    Text("Every 12 hours").tag(43200.0)
+                    Text("Every 24 hours").tag(86400.0)
+                    Text("Manual only").tag(0.0)
+                }
+            }
 
             Divider()
 
@@ -46,7 +70,7 @@ struct TopOffApp: App {
                 Image(viewModel.iconState.imageName)
             } else {
                 Image(systemName: viewModel.iconState.imageName)
-                    .symbolEffect(.pulse, isActive: viewModel.iconState == .running)
+                    .symbolEffect(.pulse, isActive: viewModel.iconState == .checking || viewModel.iconState == .updating)
             }
         }
     }
