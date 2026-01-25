@@ -52,5 +52,3 @@ MIT License - feel free to use, modify, and distribute.
 ## Credits
 
 Created by **Thomas Haslam**
-
-Built with [Claude Code](https://claude.ai/code)
