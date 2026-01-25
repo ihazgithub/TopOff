@@ -1,6 +1,7 @@
 import XCTest
 @testable import TopOff
 
+@MainActor
 final class BrewServiceTests: XCTestCase {
 
     func testBrewPathExists() {

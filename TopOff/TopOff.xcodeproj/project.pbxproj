@@ -12,7 +12,18 @@
 		A1B2C3D4E5F60003 /* BrewService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60015 /* BrewService.swift */; };
 		A1B2C3D4E5F60004 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60016 /* NotificationManager.swift */; };
 		A1B2C3D4E5F60005 /* MenuBarViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60017 /* MenuBarViewModel.swift */; };
+		A1B2C3D4E5F60101 /* BrewServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60111 /* BrewServiceTests.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		A1B2C3D4E5F60120 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A1B2C3D4E5F60050 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A1B2C3D4E5F60040;
+			remoteInfo = TopOff;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		A1B2C3D4E5F60010 /* TopOff.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TopOff.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -23,10 +34,19 @@
 		A1B2C3D4E5F60015 /* BrewService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrewService.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60016 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60017 /* MenuBarViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarViewModel.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60110 /* TopOffTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TopOffTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1B2C3D4E5F60111 /* BrewServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrewServiceTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		A1B2C3D4E5F60020 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A1B2C3D4E5F60121 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -40,6 +60,7 @@
 			isa = PBXGroup;
 			children = (
 				A1B2C3D4E5F60031 /* TopOff */,
+				A1B2C3D4E5F60112 /* TopOffTests */,
 				A1B2C3D4E5F60032 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -62,8 +83,17 @@
 			isa = PBXGroup;
 			children = (
 				A1B2C3D4E5F60010 /* TopOff.app */,
+				A1B2C3D4E5F60110 /* TopOffTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		A1B2C3D4E5F60112 /* TopOffTests */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D4E5F60111 /* BrewServiceTests.swift */,
+			);
+			path = TopOffTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -86,6 +116,24 @@
 			productReference = A1B2C3D4E5F60010 /* TopOff.app */;
 			productType = "com.apple.product-type.application";
 		};
+		A1B2C3D4E5F60100 /* TopOffTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A1B2C3D4E5F60160 /* Build configuration list for PBXNativeTarget "TopOffTests" */;
+			buildPhases = (
+				A1B2C3D4E5F60141 /* Sources */,
+				A1B2C3D4E5F60121 /* Frameworks */,
+				A1B2C3D4E5F60142 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				A1B2C3D4E5F60130 /* PBXTargetDependency */,
+			);
+			name = TopOffTests;
+			productName = TopOffTests;
+			productReference = A1B2C3D4E5F60110 /* TopOffTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -98,6 +146,10 @@
 				TargetAttributes = {
 					A1B2C3D4E5F60040 = {
 						CreatedOnToolsVersion = 15.0;
+					};
+					A1B2C3D4E5F60100 = {
+						CreatedOnToolsVersion = 15.0;
+						TestTargetID = A1B2C3D4E5F60040;
 					};
 				};
 			};
@@ -115,6 +167,7 @@
 			projectRoot = "";
 			targets = (
 				A1B2C3D4E5F60040 /* TopOff */,
+				A1B2C3D4E5F60100 /* TopOffTests */,
 			);
 		};
 /* End PBXProject section */
@@ -125,6 +178,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				A1B2C3D4E5F60002 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A1B2C3D4E5F60142 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -142,7 +202,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A1B2C3D4E5F60141 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1B2C3D4E5F60101 /* BrewServiceTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A1B2C3D4E5F60130 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A1B2C3D4E5F60040 /* TopOff */;
+			targetProxy = A1B2C3D4E5F60120 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		A1B2C3D4E5F60052 /* Debug */ = {
@@ -317,6 +393,42 @@
 			};
 			name = Release;
 		};
+		A1B2C3D4E5F60161 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.topoff.TopOffTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TopOff.app/Contents/MacOS/TopOff";
+			};
+			name = Debug;
+		};
+		A1B2C3D4E5F60162 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.topoff.TopOffTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/TopOff.app/Contents/MacOS/TopOff";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -334,6 +446,15 @@
 			buildConfigurations = (
 				A1B2C3D4E5F60061 /* Debug */,
 				A1B2C3D4E5F60062 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A1B2C3D4E5F60160 /* Build configuration list for PBXNativeTarget "TopOffTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1B2C3D4E5F60161 /* Debug */,
+				A1B2C3D4E5F60162 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
