@@ -2,21 +2,30 @@ import SwiftUI
 import ServiceManagement
 
 enum MenuBarIconState {
-    case idle        // Half-filled mug
-    case running     // Spinner
-    case checkmark   // Brief checkmark
-    case complete    // Full mug
+    case idle        // Half-filled beer mug (custom)
+    case running     // Spinner (SF Symbol)
+    case checkmark   // Brief checkmark (SF Symbol)
+    case complete    // Full beer mug (custom)
 
-    var systemImage: String {
+    var isCustomImage: Bool {
+        switch self {
+        case .idle, .complete:
+            return true
+        case .running, .checkmark:
+            return false
+        }
+    }
+
+    var imageName: String {
         switch self {
         case .idle:
-            return "mug"
+            return "MenuBarIcon"
         case .running:
             return "arrow.triangle.2.circlepath"
         case .checkmark:
             return "checkmark.circle.fill"
         case .complete:
-            return "mug.fill"
+            return "MenuBarFull"
         }
     }
 }

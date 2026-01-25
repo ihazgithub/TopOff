@@ -1,0 +1,17 @@
+<svg width="16" height="18" viewBox="0 0 16 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Mug body outline -->
+  <path d="M2 4 L2 16 Q2 17 3 17 L10 17 Q11 17 11 16 L11 4" 
+        stroke="black" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Mug top rim -->
+  <path d="M2 4 L11 4" stroke="black" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Handle -->
+  <path d="M11 6 Q15 6 15 10 Q15 14 11 14" 
+        stroke="black" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  
+  <!-- Beer liquid (half level) -->
+  <rect x="3" y="11" width="7" height="5" rx="0.5" fill="black" opacity="0.55"/>
+  
+  <!-- Wavy foam at half level - smaller organic blob -->
+  <path d="M3 11 Q3 9 5 9.5 Q6.5 8.5 8 9.5 Q10 9 10 11 Q8.5 10.5 6.5 10.5 Q4.5 10.5 3 11 Z" 
+        fill="black" opacity="0.7"/>
+</svg>

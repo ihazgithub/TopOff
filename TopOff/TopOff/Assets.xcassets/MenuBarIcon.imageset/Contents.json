@@ -1,10 +1,12 @@
 {
   "images" : [
     {
+      "filename" : "beer-mug-half.png",
       "idiom" : "mac",
       "scale" : "1x"
     },
     {
+      "filename" : "beer-mug-half@2x.png",
       "idiom" : "mac",
       "scale" : "2x"
     }
@@ -14,7 +16,6 @@
     "version" : 1
   },
   "properties" : {
-    "preserves-vector-representation" : true,
     "template-rendering-intent" : "template"
   }
 }

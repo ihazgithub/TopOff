@@ -42,8 +42,12 @@ struct TopOffApp: App {
                 NSApplication.shared.terminate(nil)
             }
         } label: {
-            Image(systemName: viewModel.iconState.systemImage)
-                .symbolEffect(.pulse, isActive: viewModel.iconState == .running)
+            if viewModel.iconState.isCustomImage {
+                Image(viewModel.iconState.imageName)
+            } else {
+                Image(systemName: viewModel.iconState.imageName)
+                    .symbolEffect(.pulse, isActive: viewModel.iconState == .running)
+            }
         }
     }
 }
