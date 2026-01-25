@@ -6,6 +6,12 @@ A simple macOS menu bar app for one-click Homebrew updates.
 ![Swift](https://img.shields.io/badge/Swift-5-orange)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
+## Download
+
+**[Download TopOff v1.0.0](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.0.0.dmg)** (macOS 14+)
+
+Or view all releases [here](https://github.com/ihazgithub/TopOff/releases).
+
 ## Features
 
 - **One-click updates** — Run `brew update && brew upgrade` from your menu bar
@@ -19,6 +25,12 @@ A simple macOS menu bar app for one-click Homebrew updates.
 The menu bar icon shows a half-filled beer mug. When updates complete, it briefly shows a checkmark, then an overflowing mug with foam, before returning to the half-filled state.
 
 ## Installation
+
+### Download (Recommended)
+
+1. Download the [latest DMG](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.0.0.dmg)
+2. Open the DMG and drag TopOff to your Applications folder
+3. Open TopOff (you may need to right-click → Open the first time)
 
 ### Build from Source
 
