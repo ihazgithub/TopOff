@@ -22,6 +22,22 @@ struct TopOffApp: App {
 
             Divider()
 
+            // Last Update Results
+            if let result = viewModel.lastUpdateResult {
+                if result.isEmpty {
+                    Text("Last Update: No changes")
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("Last Update (\(result.count) package\(result.count == 1 ? "" : "s")):")
+                        .foregroundStyle(.secondary)
+                    ForEach(result.packages) { package in
+                        Text("  ✓ \(package.name) \(package.oldVersion) → \(package.newVersion)")
+                            .font(.system(.body, design: .monospaced))
+                    }
+                }
+                Divider()
+            }
+
             Button("Quit") {
                 NSApplication.shared.terminate(nil)
             }

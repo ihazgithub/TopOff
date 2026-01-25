@@ -14,6 +14,21 @@ enum BrewError: Error, LocalizedError {
     }
 }
 
+struct UpgradedPackage: Identifiable {
+    let id = UUID()
+    let name: String
+    let oldVersion: String
+    let newVersion: String
+}
+
+struct UpdateResult {
+    let packages: [UpgradedPackage]
+    let timestamp: Date
+
+    var isEmpty: Bool { packages.isEmpty }
+    var count: Int { packages.count }
+}
+
 @MainActor
 class BrewService: ObservableObject {
     @Published var isRunning = false
@@ -41,7 +56,7 @@ class BrewService: ObservableObject {
         Self.findBrewPath()
     }
 
-    func updateAll(greedy: Bool = false) async throws -> String {
+    func updateAll(greedy: Bool = false) async throws -> UpdateResult {
         guard let brewPath = brewPath else {
             throw BrewError.brewNotFound
         }
@@ -61,7 +76,44 @@ class BrewService: ObservableObject {
 
         let fullOutput = updateOutput + "\n" + upgradeOutput
         lastOutput = fullOutput
-        return fullOutput
+
+        // Parse the upgrade output to find upgraded packages
+        let packages = parseUpgradeOutput(upgradeOutput)
+        return UpdateResult(packages: packages, timestamp: Date())
+    }
+
+    private func parseUpgradeOutput(_ output: String) -> [UpgradedPackage] {
+        var packages: [UpgradedPackage] = []
+
+        // Look for lines like "==> Upgrading foo 1.0 -> 2.0" or "foo 1.0 -> 2.0"
+        let lines = output.components(separatedBy: .newlines)
+
+        for line in lines {
+            // Match patterns like "package 1.0 -> 2.0" or "==> Upgrading package 1.0 -> 2.0"
+            if line.contains(" -> ") {
+                let cleanLine = line.replacingOccurrences(of: "==> Upgrading ", with: "")
+                                    .replacingOccurrences(of: "==> ", with: "")
+                                    .trimmingCharacters(in: .whitespaces)
+
+                let parts = cleanLine.components(separatedBy: " -> ")
+                if parts.count == 2 {
+                    let leftParts = parts[0].components(separatedBy: " ")
+                    if leftParts.count >= 2 {
+                        let name = leftParts.dropLast().joined(separator: " ")
+                        let oldVersion = leftParts.last ?? ""
+                        let newVersion = parts[1].trimmingCharacters(in: .whitespaces)
+
+                        packages.append(UpgradedPackage(
+                            name: name,
+                            oldVersion: oldVersion,
+                            newVersion: newVersion
+                        ))
+                    }
+                }
+            }
+        }
+
+        return packages
     }
 
     private func runCommand(_ command: String, arguments: [String]) async throws -> String {

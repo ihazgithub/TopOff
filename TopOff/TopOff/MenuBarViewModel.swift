@@ -24,6 +24,7 @@ enum MenuBarIconState {
 @MainActor
 class MenuBarViewModel: ObservableObject {
     @Published var iconState: MenuBarIconState = .idle
+    @Published var lastUpdateResult: UpdateResult?
     @Published var launchAtLogin: Bool {
         didSet {
             UserDefaults.standard.set(launchAtLogin, forKey: "launchAtLogin")
@@ -48,9 +49,14 @@ class MenuBarViewModel: ObservableObject {
             iconState = .running
 
             do {
-                _ = try await brewService.updateAll(greedy: greedy)
+                let result = try await brewService.updateAll(greedy: greedy)
+                lastUpdateResult = result
                 await showSuccessAnimation()
-                notificationManager.showCompletionNotification(success: true, message: "")
+
+                let message = result.isEmpty
+                    ? "Everything is up to date!"
+                    : "\(result.count) package\(result.count == 1 ? "" : "s") upgraded"
+                notificationManager.showCompletionNotification(success: true, message: message)
             } catch {
                 iconState = .idle
                 notificationManager.showCompletionNotification(success: false, message: error.localizedDescription)

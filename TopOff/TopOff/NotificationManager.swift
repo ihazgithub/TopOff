@@ -19,7 +19,7 @@ class NotificationManager {
         content.title = "TopOff"
 
         if success {
-            content.body = "All packages updated! 🎉"
+            content.body = message.isEmpty ? "All packages updated! 🎉" : message
             content.sound = .default
         } else {
             content.body = "Update failed: \(message)"
