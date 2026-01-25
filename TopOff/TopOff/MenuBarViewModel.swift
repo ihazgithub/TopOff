@@ -31,9 +31,10 @@ enum MenuBarIconState {
 }
 
 @MainActor
-class MenuBarViewModel: ObservableObject {
+final class MenuBarViewModel: ObservableObject {
     @Published var iconState: MenuBarIconState = .idle
     @Published var lastUpdateResult: UpdateResult?
+    @Published private(set) var isRunning = false
     @Published var launchAtLogin: Bool {
         didSet {
             UserDefaults.standard.set(launchAtLogin, forKey: "launchAtLogin")
@@ -44,17 +45,16 @@ class MenuBarViewModel: ObservableObject {
     private let brewService = BrewService()
     private let notificationManager = NotificationManager.shared
 
-    var isRunning: Bool {
-        brewService.isRunning
-    }
-
     init() {
         self.launchAtLogin = UserDefaults.standard.bool(forKey: "launchAtLogin")
         notificationManager.requestPermission()
     }
 
     func updateAll(greedy: Bool) {
+        guard !isRunning else { return }
+
         Task {
+            isRunning = true
             iconState = .running
 
             do {
@@ -70,6 +70,8 @@ class MenuBarViewModel: ObservableObject {
                 iconState = .idle
                 notificationManager.showCompletionNotification(success: false, message: error.localizedDescription)
             }
+
+            isRunning = false
         }
     }
 

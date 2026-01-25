@@ -30,10 +30,7 @@ struct UpdateResult {
 }
 
 @MainActor
-class BrewService: ObservableObject {
-    @Published var isRunning = false
-    @Published var lastOutput: String = ""
-
+final class BrewService {
     let brewPath: String?
 
     init() {
@@ -61,11 +58,8 @@ class BrewService: ObservableObject {
             throw BrewError.brewNotFound
         }
 
-        isRunning = true
-        defer { isRunning = false }
-
         // Run brew update
-        let updateOutput = try await runCommand(brewPath, arguments: ["update"])
+        _ = try await runCommand(brewPath, arguments: ["update"])
 
         // Run brew upgrade
         var upgradeArgs = ["upgrade"]
@@ -73,9 +67,6 @@ class BrewService: ObservableObject {
             upgradeArgs.append("--greedy")
         }
         let upgradeOutput = try await runCommand(brewPath, arguments: upgradeArgs)
-
-        let fullOutput = updateOutput + "\n" + upgradeOutput
-        lastOutput = fullOutput
 
         // Parse the upgrade output to find upgraded packages
         let packages = parseUpgradeOutput(upgradeOutput)
