@@ -14,6 +14,13 @@ enum BrewError: Error, LocalizedError {
     }
 }
 
+struct OutdatedPackage: Identifiable {
+    let id = UUID()
+    let name: String
+    let currentVersion: String
+    let latestVersion: String
+}
+
 struct UpgradedPackage: Identifiable {
     let id = UUID()
     let name: String
@@ -27,6 +34,11 @@ struct UpdateResult {
 
     var isEmpty: Bool { packages.isEmpty }
     var count: Int { packages.count }
+}
+
+struct CleanupResult {
+    let freedSpace: String
+    let timestamp: Date
 }
 
 @MainActor
@@ -53,7 +65,7 @@ final class BrewService {
         Self.findBrewPath()
     }
 
-    func checkOutdated() async throws -> [String] {
+    func checkOutdated() async throws -> [OutdatedPackage] {
         guard let brewPath = brewPath else {
             throw BrewError.brewNotFound
         }
@@ -61,9 +73,9 @@ final class BrewService {
         // Run brew update first to refresh package info
         _ = try await runCommand(brewPath, arguments: ["update"])
 
-        // Then check what's outdated
-        let output = try await runCommand(brewPath, arguments: ["outdated"])
-        return output.components(separatedBy: .newlines).filter { !$0.isEmpty }
+        // Then check what's outdated with verbose output for version info
+        let output = try await runCommand(brewPath, arguments: ["outdated", "--verbose"])
+        return parseOutdatedVerbose(output)
     }
 
     func updateAll(greedy: Bool = false) async throws -> UpdateResult {
@@ -118,6 +130,77 @@ final class BrewService {
         }
 
         return packages
+    }
+
+    private func parseOutdatedVerbose(_ output: String) -> [OutdatedPackage] {
+        // brew outdated --verbose outputs lines like:
+        // node (20.1.0) < 22.0.0
+        // python@3.12 (3.11.4) < 3.12.1
+        var packages: [OutdatedPackage] = []
+        let lines = output.components(separatedBy: .newlines)
+
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard !trimmed.isEmpty, trimmed.contains(" < ") else { continue }
+
+            let parts = trimmed.components(separatedBy: " < ")
+            guard parts.count == 2 else { continue }
+
+            let latestVersion = parts[1].trimmingCharacters(in: .whitespaces)
+            let leftSide = parts[0]
+
+            // Extract name and current version from "name (version)"
+            if let parenOpen = leftSide.lastIndex(of: "("),
+               let parenClose = leftSide.lastIndex(of: ")") {
+                let name = String(leftSide[leftSide.startIndex..<parenOpen]).trimmingCharacters(in: .whitespaces)
+                let currentVersion = String(leftSide[leftSide.index(after: parenOpen)..<parenClose])
+                packages.append(OutdatedPackage(name: name, currentVersion: currentVersion, latestVersion: latestVersion))
+            } else {
+                // Fallback: treat everything before " < " as name, no current version
+                let name = leftSide.trimmingCharacters(in: .whitespaces)
+                packages.append(OutdatedPackage(name: name, currentVersion: "?", latestVersion: latestVersion))
+            }
+        }
+
+        return packages
+    }
+
+    func upgradePackage(_ name: String) async throws -> UpdateResult {
+        guard let brewPath = brewPath else {
+            throw BrewError.brewNotFound
+        }
+
+        let upgradeOutput = try await runCommand(brewPath, arguments: ["upgrade", name])
+        let packages = parseUpgradeOutput(upgradeOutput)
+        return UpdateResult(packages: packages, timestamp: Date())
+    }
+
+    func cleanup() async throws -> CleanupResult {
+        guard let brewPath = brewPath else {
+            throw BrewError.brewNotFound
+        }
+
+        let output = try await runCommand(brewPath, arguments: ["cleanup"])
+        return parseCleanupOutput(output)
+    }
+
+    private func parseCleanupOutput(_ output: String) -> CleanupResult {
+        // Look for the summary line: "==> This operation has freed approximately 401.7MB of disk space."
+        let lines = output.components(separatedBy: .newlines)
+
+        for line in lines {
+            if line.contains("freed approximately") {
+                // Extract the size value between "approximately " and " of disk space"
+                if let approxRange = line.range(of: "approximately "),
+                   let ofRange = line.range(of: " of disk space") {
+                    let freedSpace = String(line[approxRange.upperBound..<ofRange.lowerBound])
+                    return CleanupResult(freedSpace: freedSpace, timestamp: Date())
+                }
+            }
+        }
+
+        // If no summary line found, cleanup may have had nothing to do
+        return CleanupResult(freedSpace: "", timestamp: Date())
     }
 
     private func runCommand(_ command: String, arguments: [String]) async throws -> String {

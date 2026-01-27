@@ -12,6 +12,8 @@
 		A1B2C3D4E5F60003 /* BrewService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60015 /* BrewService.swift */; };
 		A1B2C3D4E5F60004 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60016 /* NotificationManager.swift */; };
 		A1B2C3D4E5F60005 /* MenuBarViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60017 /* MenuBarViewModel.swift */; };
+		A1B2C3D4E5F60006 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60018 /* AboutView.swift */; };
+		A1B2C3D4E5F60007 /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60019 /* UpdateChecker.swift */; };
 		A1B2C3D4E5F60101 /* BrewServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60111 /* BrewServiceTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -34,6 +36,8 @@
 		A1B2C3D4E5F60015 /* BrewService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrewService.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60016 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60017 /* MenuBarViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarViewModel.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60018 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60019 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60110 /* TopOffTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TopOffTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1B2C3D4E5F60111 /* BrewServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrewServiceTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -72,6 +76,8 @@
 				A1B2C3D4E5F60017 /* MenuBarViewModel.swift */,
 				A1B2C3D4E5F60015 /* BrewService.swift */,
 				A1B2C3D4E5F60016 /* NotificationManager.swift */,
+				A1B2C3D4E5F60018 /* AboutView.swift */,
+				A1B2C3D4E5F60019 /* UpdateChecker.swift */,
 				A1B2C3D4E5F60012 /* Assets.xcassets */,
 				A1B2C3D4E5F60013 /* TopOff.entitlements */,
 				A1B2C3D4E5F60014 /* Info.plist */,
@@ -199,6 +205,8 @@
 				A1B2C3D4E5F60005 /* MenuBarViewModel.swift in Sources */,
 				A1B2C3D4E5F60003 /* BrewService.swift in Sources */,
 				A1B2C3D4E5F60004 /* NotificationManager.swift in Sources */,
+				A1B2C3D4E5F60006 /* AboutView.swift in Sources */,
+				A1B2C3D4E5F60007 /* UpdateChecker.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -352,12 +360,12 @@
 				INFOPLIST_FILE = TopOff/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TopOff;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2025 TopOff. All rights reserved.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 TopOff. All rights reserved.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.topoff.TopOff;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -380,12 +388,12 @@
 				INFOPLIST_FILE = TopOff/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TopOff;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2025 TopOff. All rights reserved.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 TopOff. All rights reserved.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.topoff.TopOff;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -402,7 +410,7 @@
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.topoff.TopOffTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -420,7 +428,7 @@
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = com.topoff.TopOffTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
