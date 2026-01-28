@@ -30,6 +30,8 @@ Or view all releases [here](https://github.com/ihazgithub/TopOff/releases).
 
 ## Screenshots
 
+![TopOff Demo](TopOff_demo.gif)
+
 The menu bar icon tells you at a glance if updates are available:
 
 | Icon | Meaning |
