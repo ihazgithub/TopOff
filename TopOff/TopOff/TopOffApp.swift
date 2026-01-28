@@ -126,11 +126,13 @@ struct TopOffApp: App {
                 NSApplication.shared.terminate(nil)
             }
         } label: {
-            if viewModel.iconState.isCustomImage {
+            if let frame = viewModel.spinnerFrame,
+               viewModel.iconState == .checking || viewModel.iconState == .updating {
+                Image(nsImage: frame)
+            } else if viewModel.iconState.isCustomImage {
                 Image(viewModel.iconState.imageName)
             } else {
                 Image(systemName: viewModel.iconState.imageName)
-                    .symbolEffect(.pulse, isActive: viewModel.iconState == .checking || viewModel.iconState == .updating)
             }
         }
 

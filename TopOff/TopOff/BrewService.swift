@@ -3,6 +3,7 @@ import Foundation
 enum BrewError: Error, LocalizedError {
     case brewNotFound
     case commandFailed(String)
+    case permissionDenied(String)
 
     var errorDescription: String? {
         switch self {
@@ -10,6 +11,8 @@ enum BrewError: Error, LocalizedError {
             return "Homebrew not found. Please install Homebrew first."
         case .commandFailed(let message):
             return "Brew command failed: \(message)"
+        case .permissionDenied(let message):
+            return "Permission denied: \(message)"
         }
     }
 }
@@ -78,7 +81,7 @@ final class BrewService {
         return parseOutdatedVerbose(output)
     }
 
-    func updateAll(greedy: Bool = false) async throws -> UpdateResult {
+    func updateAll(greedy: Bool = false, onProgress: (@Sendable (String) -> Void)? = nil) async throws -> UpdateResult {
         guard let brewPath = brewPath else {
             throw BrewError.brewNotFound
         }
@@ -86,12 +89,17 @@ final class BrewService {
         // Run brew update
         _ = try await runCommand(brewPath, arguments: ["update"])
 
-        // Run brew upgrade
+        // Run brew upgrade with streaming output for progress
         var upgradeArgs = ["upgrade"]
         if greedy {
             upgradeArgs.append("--greedy")
         }
-        let upgradeOutput = try await runCommand(brewPath, arguments: upgradeArgs)
+        let upgradeOutput: String
+        if let onProgress {
+            upgradeOutput = try await runCommandStreaming(brewPath, arguments: upgradeArgs, onLine: onProgress)
+        } else {
+            upgradeOutput = try await runCommand(brewPath, arguments: upgradeArgs)
+        }
 
         // Parse the upgrade output to find upgraded packages
         let packages = parseUpgradeOutput(upgradeOutput)
@@ -218,10 +226,7 @@ final class BrewService {
             environment["PATH"] = "/opt/homebrew/bin:/usr/local/bin:" + (environment["PATH"] ?? "")
             process.environment = environment
 
-            do {
-                try process.run()
-                process.waitUntilExit()
-
+            process.terminationHandler = { _ in
                 let data = pipe.fileHandleForReading.readDataToEndOfFile()
                 let output = String(data: data, encoding: .utf8) ?? ""
 
@@ -230,9 +235,158 @@ final class BrewService {
                 } else {
                     continuation.resume(throwing: BrewError.commandFailed(output))
                 }
+            }
+
+            do {
+                try process.run()
             } catch {
                 continuation.resume(throwing: error)
             }
         }
+    }
+
+    private func runCommandStreaming(_ command: String, arguments: [String], onLine: @escaping @Sendable (String) -> Void) async throws -> String {
+        try await withCheckedThrowingContinuation { continuation in
+            let process = Process()
+            let pipe = Pipe()
+            let outputData = NSMutableData()
+
+            process.executableURL = URL(fileURLWithPath: command)
+            process.arguments = arguments
+            process.standardOutput = pipe
+            process.standardError = pipe
+
+            var environment = ProcessInfo.processInfo.environment
+            environment["PATH"] = "/opt/homebrew/bin:/usr/local/bin:" + (environment["PATH"] ?? "")
+            process.environment = environment
+
+            pipe.fileHandleForReading.readabilityHandler = { handle in
+                let data = handle.availableData
+                guard !data.isEmpty else { return }
+                outputData.append(data)
+                if let text = String(data: data, encoding: .utf8) {
+                    let lines = text.components(separatedBy: .newlines)
+                    for line in lines where !line.isEmpty {
+                        onLine(line)
+                    }
+                }
+            }
+
+            process.terminationHandler = { _ in
+                pipe.fileHandleForReading.readabilityHandler = nil
+                let remainingData = pipe.fileHandleForReading.readDataToEndOfFile()
+                if !remainingData.isEmpty {
+                    outputData.append(remainingData)
+                }
+
+                let output = String(data: outputData as Data, encoding: .utf8) ?? ""
+
+                if process.terminationStatus == 0 {
+                    continuation.resume(returning: output)
+                } else {
+                    continuation.resume(throwing: BrewError.commandFailed(output))
+                }
+            }
+
+            do {
+                try process.run()
+            } catch {
+                continuation.resume(throwing: error)
+            }
+        }
+    }
+
+    // MARK: - Permission Error Detection
+
+    func isPermissionError(_ output: String) -> Bool {
+        let keywords = [
+            "Permission denied",
+            "Operation not permitted",
+            "Failure while executing",
+            "password is required",
+            "requires root",
+            "sudo",
+            "insufficient permissions"
+        ]
+        let lowercased = output.lowercased()
+        return keywords.contains { lowercased.contains($0.lowercased()) }
+    }
+
+    // MARK: - Admin Privilege Execution
+
+    private func runCommandWithAdmin(_ command: String, arguments: [String]) async throws -> String {
+        let fullCommand = ([command] + arguments)
+            .map { $0.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "'", with: "'\\''") }
+            .joined(separator: " ")
+
+        let appleScript = "do shell script \"\(fullCommand)\" with administrator privileges"
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let process = Process()
+            let pipe = Pipe()
+            let errorPipe = Pipe()
+
+            process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+            process.arguments = ["-e", appleScript]
+            process.standardOutput = pipe
+            process.standardError = errorPipe
+
+            process.terminationHandler = { _ in
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+                let output = String(data: data, encoding: .utf8) ?? ""
+                let errorOutput = String(data: errorData, encoding: .utf8) ?? ""
+
+                if process.terminationStatus == 0 {
+                    continuation.resume(returning: output)
+                } else {
+                    // User cancelled the password dialog
+                    if errorOutput.contains("User canceled") || errorOutput.contains("user canceled") {
+                        continuation.resume(throwing: BrewError.commandFailed("Admin authentication cancelled by user."))
+                    } else {
+                        continuation.resume(throwing: BrewError.commandFailed(errorOutput.isEmpty ? output : errorOutput))
+                    }
+                }
+            }
+
+            do {
+                try process.run()
+            } catch {
+                continuation.resume(throwing: error)
+            }
+        }
+    }
+
+    func updateAllWithAdmin(greedy: Bool = false, onProgress: (@Sendable (String) -> Void)? = nil) async throws -> UpdateResult {
+        guard let brewPath = brewPath else {
+            throw BrewError.brewNotFound
+        }
+
+        var upgradeArgs = ["upgrade"]
+        if greedy {
+            upgradeArgs.append("--greedy")
+        }
+
+        let upgradeOutput = try await runCommandWithAdmin(brewPath, arguments: upgradeArgs)
+
+        if let onProgress {
+            let lines = upgradeOutput.components(separatedBy: .newlines)
+            for line in lines where !line.isEmpty {
+                onProgress(line)
+            }
+        }
+
+        let packages = parseUpgradeOutput(upgradeOutput)
+        return UpdateResult(packages: packages, timestamp: Date())
+    }
+
+    func upgradePackageWithAdmin(_ name: String) async throws -> UpdateResult {
+        guard let brewPath = brewPath else {
+            throw BrewError.brewNotFound
+        }
+
+        let upgradeOutput = try await runCommandWithAdmin(brewPath, arguments: ["upgrade", name])
+        let packages = parseUpgradeOutput(upgradeOutput)
+        return UpdateResult(packages: packages, timestamp: Date())
     }
 }

@@ -8,18 +8,20 @@ A simple macOS menu bar app for one-click Homebrew updates with automatic backgr
 
 ## Download
 
-**[Download TopOff v1.2](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.2.dmg)** (macOS 14+)
+**[Download TopOff v1.3](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.3.dmg)** (macOS 14+)
 
 Or view all releases [here](https://github.com/ihazgithub/TopOff/releases).
 
 ## Features
 
 - **Automatic update checking** — Periodically checks for outdated packages in the background
-- **Smart icon status** — Full mug when up-to-date, half-full when updates are available
+- **Smart icon status** — Full mug when up-to-date, half-full when updates are available, animated spinner when actively updating
+- **Real-time progress** — See exactly which package is being updated as it happens — click the menu bar during updates to watch live
 - **Package details at a glance** — See outdated package names and version changes directly in the menu
 - **One-click updates** — Run `brew update && brew upgrade` from your menu bar
 - **Selective updates** — Update or skip individual packages (enable in Settings)
 - **Greedy mode** — Force-update apps that auto-update (Chrome, Slack, etc.)
+- **Admin retry for protected packages** — If a cask needs admin access, TopOff prompts for your password and retries automatically
 - **Auto cleanup** — Automatically runs `brew cleanup` after upgrades to free disk space
 - **Configurable check interval** — Check every hour, 4 hours (default), 12 hours, 24 hours, or manually
 - **See what changed** — View upgraded packages and freed disk space in the menu
@@ -34,14 +36,14 @@ The menu bar icon tells you at a glance if updates are available:
 |------|---------|
 | Full mug | All packages are up-to-date |
 | Half-full mug | Updates are available (needs a refill!) |
-| Spinning arrows | Checking for updates or updating |
+| Spinning arrows | Checking for updates or updating — click to see live progress |
 | Checkmark | Update completed successfully |
 
 ## Installation
 
 ### Download (Recommended)
 
-1. Download the [latest DMG](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.2.dmg)
+1. Download the [latest DMG](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.3.dmg)
 2. Open the DMG and drag TopOff to your Applications folder
 3. Open TopOff (you may need to right-click → Open the first time)
 

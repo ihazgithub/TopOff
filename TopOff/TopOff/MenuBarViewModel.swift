@@ -1,5 +1,6 @@
 import SwiftUI
 import ServiceManagement
+import AppKit
 
 enum MenuBarIconState {
     case upToDate         // Full mug - no updates available
@@ -33,7 +34,15 @@ enum MenuBarIconState {
 
 @MainActor
 final class MenuBarViewModel: ObservableObject {
-    @Published var iconState: MenuBarIconState = .upToDate
+    @Published var iconState: MenuBarIconState = .upToDate {
+        didSet {
+            if iconState == .checking || iconState == .updating {
+                startIconAnimation()
+            } else {
+                stopIconAnimation()
+            }
+        }
+    }
     @Published var lastUpdateResult: UpdateResult?
     @Published var lastCleanupResult: CleanupResult?
     @Published private(set) var isRunning = false
@@ -66,11 +75,15 @@ final class MenuBarViewModel: ObservableObject {
     @Published var appUpdateInfo: AppUpdateInfo?
     @Published var isCheckingForAppUpdate = false
     @Published var appUpdateChecked = false
+    @Published var spinnerFrame: NSImage?
 
     private let brewService = BrewService()
     private let updateChecker = UpdateChecker()
     private let notificationManager = NotificationManager.shared
     private var checkTimer: Timer?
+    private var iconAnimationTimer: Timer?
+    private var spinnerFrames: [NSImage] = []
+    private var spinnerFrameIndex = 0
 
     init() {
         self.launchAtLogin = UserDefaults.standard.bool(forKey: "launchAtLogin")
@@ -82,6 +95,7 @@ final class MenuBarViewModel: ObservableObject {
         } else {
             self.autoCleanupEnabled = UserDefaults.standard.bool(forKey: "autoCleanupEnabled")
         }
+        spinnerFrames = Self.generateSpinnerFrames()
         notificationManager.requestPermission()
 
         // Check for updates on launch
@@ -110,7 +124,17 @@ final class MenuBarViewModel: ObservableObject {
             statusMessage = "Updating packages..."
 
             do {
-                let result = try await brewService.updateAll(greedy: greedy)
+                let result = try await brewService.updateAll(greedy: greedy) { [weak self] line in
+                    if line.contains("==> Upgrading") {
+                        let name = line.replacingOccurrences(of: "==> Upgrading ", with: "")
+                            .components(separatedBy: " ").first ?? ""
+                        if !name.isEmpty {
+                            Task { @MainActor in
+                                self?.statusMessage = "Updating \(name)..."
+                            }
+                        }
+                    }
+                }
                 lastUpdateResult = result
                 outdatedPackages = []
                 skippedPackages = []
@@ -132,9 +156,50 @@ final class MenuBarViewModel: ObservableObject {
                 }
                 notificationManager.showCompletionNotification(success: true, message: message)
             } catch {
-                statusMessage = nil
-                iconState = outdatedPackages.isEmpty ? .upToDate : .updatesAvailable
-                notificationManager.showCompletionNotification(success: false, message: error.localizedDescription)
+                let errorOutput = extractErrorOutput(from: error)
+                if brewService.isPermissionError(errorOutput) && promptForAdminRetry(packageName: nil) {
+                    do {
+                        statusMessage = "Retrying with admin privileges..."
+                        let result = try await brewService.updateAllWithAdmin(greedy: greedy) { [weak self] line in
+                            if line.contains("==> Upgrading") {
+                                let name = line.replacingOccurrences(of: "==> Upgrading ", with: "")
+                                    .components(separatedBy: " ").first ?? ""
+                                if !name.isEmpty {
+                                    Task { @MainActor in
+                                        self?.statusMessage = "Updating \(name)..."
+                                    }
+                                }
+                            }
+                        }
+                        lastUpdateResult = result
+                        outdatedPackages = []
+                        skippedPackages = []
+
+                        if autoCleanupEnabled {
+                            statusMessage = "Cleaning up..."
+                            lastCleanupResult = try? await brewService.cleanup()
+                        }
+
+                        statusMessage = nil
+                        await showSuccessAnimation()
+
+                        var message = result.isEmpty
+                            ? "Everything is up to date!"
+                            : "\(result.count) package\(result.count == 1 ? "" : "s") upgraded"
+                        if let cleanup = lastCleanupResult, !cleanup.freedSpace.isEmpty {
+                            message += ". Freed \(cleanup.freedSpace)"
+                        }
+                        notificationManager.showCompletionNotification(success: true, message: message)
+                    } catch {
+                        statusMessage = nil
+                        iconState = outdatedPackages.isEmpty ? .upToDate : .updatesAvailable
+                        notificationManager.showCompletionNotification(success: false, message: error.localizedDescription)
+                    }
+                } else {
+                    statusMessage = nil
+                    iconState = outdatedPackages.isEmpty ? .upToDate : .updatesAvailable
+                    notificationManager.showCompletionNotification(success: false, message: error.localizedDescription)
+                }
             }
 
             isRunning = false
@@ -178,9 +243,44 @@ final class MenuBarViewModel: ObservableObject {
                 let message = "\(package.name) upgraded"
                 notificationManager.showCompletionNotification(success: true, message: message)
             } catch {
-                statusMessage = nil
-                updateIconState()
-                notificationManager.showCompletionNotification(success: false, message: error.localizedDescription)
+                let errorOutput = extractErrorOutput(from: error)
+                if brewService.isPermissionError(errorOutput) && promptForAdminRetry(packageName: package.name) {
+                    do {
+                        statusMessage = "Retrying \(package.name) with admin privileges..."
+                        let result = try await brewService.upgradePackageWithAdmin(package.name)
+
+                        outdatedPackages.removeAll { $0.name == package.name }
+                        skippedPackages.remove(package.name)
+
+                        if let existing = lastUpdateResult {
+                            lastUpdateResult = UpdateResult(
+                                packages: existing.packages + result.packages,
+                                timestamp: Date()
+                            )
+                        } else {
+                            lastUpdateResult = result
+                        }
+
+                        if autoCleanupEnabled {
+                            statusMessage = "Cleaning up..."
+                            lastCleanupResult = try? await brewService.cleanup()
+                        }
+
+                        statusMessage = nil
+                        updateIconState()
+
+                        let message = "\(package.name) upgraded"
+                        notificationManager.showCompletionNotification(success: true, message: message)
+                    } catch {
+                        statusMessage = nil
+                        updateIconState()
+                        notificationManager.showCompletionNotification(success: false, message: error.localizedDescription)
+                    }
+                } else {
+                    statusMessage = nil
+                    updateIconState()
+                    notificationManager.showCompletionNotification(success: false, message: error.localizedDescription)
+                }
             }
 
             isRunning = false
@@ -248,6 +348,34 @@ final class MenuBarViewModel: ObservableObject {
         }
     }
 
+    private func promptForAdminRetry(packageName: String?) -> Bool {
+        let alert = NSAlert()
+        alert.messageText = "Administrator Access Required"
+        if let name = packageName {
+            alert.informativeText = "\"\(name)\" needs administrator access to update. This will open the macOS password dialog."
+        } else {
+            alert.informativeText = "Some packages need administrator access to update. This will open the macOS password dialog."
+        }
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "Retry with Admin")
+        alert.addButton(withTitle: "Cancel")
+        return alert.runModal() == .alertFirstButtonReturn
+    }
+
+    private func extractErrorOutput(from error: Error) -> String {
+        if let brewError = error as? BrewError {
+            switch brewError {
+            case .commandFailed(let output):
+                return output
+            case .permissionDenied(let output):
+                return output
+            case .brewNotFound:
+                return ""
+            }
+        }
+        return error.localizedDescription
+    }
+
     private func updateIconState() {
         if visibleOutdatedPackages.isEmpty {
             iconState = .upToDate
@@ -284,6 +412,51 @@ final class MenuBarViewModel: ObservableObject {
 
         // Full mug - everything is up to date after upgrade
         iconState = .upToDate
+    }
+
+    private func startIconAnimation() {
+        iconAnimationTimer?.invalidate()
+        spinnerFrameIndex = 0
+        spinnerFrame = spinnerFrames.first
+        iconAnimationTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self, !self.spinnerFrames.isEmpty else { return }
+                self.spinnerFrameIndex = (self.spinnerFrameIndex + 1) % self.spinnerFrames.count
+                self.spinnerFrame = self.spinnerFrames[self.spinnerFrameIndex]
+            }
+        }
+    }
+
+    private func stopIconAnimation() {
+        iconAnimationTimer?.invalidate()
+        iconAnimationTimer = nil
+        spinnerFrame = nil
+    }
+
+    private static func generateSpinnerFrames(frameCount: Int = 12, pointSize: CGFloat = 16) -> [NSImage] {
+        guard let baseSymbol = NSImage(systemSymbolName: "arrow.triangle.2.circlepath", accessibilityDescription: nil) else {
+            return []
+        }
+
+        let config = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .medium)
+        guard let configured = baseSymbol.withSymbolConfiguration(config) else { return [] }
+
+        let size = configured.size
+
+        return (0..<frameCount).compactMap { i in
+            let angle = -CGFloat(i) * (2.0 * .pi / CGFloat(frameCount))
+
+            let image = NSImage(size: size, flipped: false) { _ in
+                guard let ctx = NSGraphicsContext.current?.cgContext else { return false }
+                ctx.translateBy(x: size.width / 2, y: size.height / 2)
+                ctx.rotate(by: angle)
+                ctx.translateBy(x: -size.width / 2, y: -size.height / 2)
+                configured.draw(in: NSRect(origin: .zero, size: size))
+                return true
+            }
+            image.isTemplate = true
+            return image
+        }
     }
 
     private func updateLaunchAtLogin() {

@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.3 — January 2026
+
+### New Features
+
+- **Real-time update progress** — See exactly which package is being updated as it happens. Click the menu bar icon during an upgrade to watch the progress live — no more wondering what's going on behind the scenes
+- **Admin retry for protected packages** — If a package needs admin access to update (common with cask apps like Chrome or Slack), TopOff detects the permission failure, prompts for your password via the standard macOS dialog, and retries automatically
+
+### Improvements
+
+- **Animated spinning icon** — The menu bar icon now visibly spins during updates so you can tell at a glance when TopOff is actively working
+- **Fully interactive UI** — The app no longer freezes during brew operations — you can open the menu, check status, or quit at any time
+
+---
+
 ## v1.2 — January 2026
 
 ### New Features
