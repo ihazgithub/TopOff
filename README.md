@@ -92,6 +92,26 @@ All preferences are available under the **Settings** submenu:
 | Update All | `brew upgrade` | Updates packages that don't auto-update |
 | Update All (Greedy) | `brew upgrade --greedy` | Also updates apps with built-in auto-update (Chrome, VSCode, etc.) |
 
+## Privacy & Network Connections
+
+TopOff makes only one network connection:
+
+- **GitHub API** (`api.github.com`) — Checks for new TopOff releases on app launch
+
+That's it. No analytics, no telemetry, no tracking.
+
+### Why does my firewall show other connections?
+
+If you use a firewall like Little Snitch or Lulu, you may see TopOff associated with connections to other servers (e.g., InfluxData, Google, etc.). **These connections are from Homebrew, not TopOff.**
+
+When TopOff runs `brew update` or `brew upgrade`, it spawns Homebrew as a child process. Firewalls often attribute child process network activity to the parent app. These connections may come from:
+
+- Homebrew's own analytics (can be disabled with `brew analytics off`)
+- Specific formulas or casks being updated that have telemetry
+- Package download servers
+
+You can safely allow or deny these connections based on your preferences — denying them won't affect TopOff's functionality.
+
 ## License
 
 MIT License - feel free to use, modify, and distribute.
