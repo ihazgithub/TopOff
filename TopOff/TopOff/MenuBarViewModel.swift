@@ -80,10 +80,12 @@ final class MenuBarViewModel: ObservableObject {
     private let brewService = BrewService()
     private let updateChecker = UpdateChecker()
     private let notificationManager = NotificationManager.shared
+    private let networkMonitor = NetworkMonitor()
     private var checkTimer: Timer?
     private var iconAnimationTimer: Timer?
     private var spinnerFrames: [NSImage] = []
     private var spinnerFrameIndex = 0
+    private var initialCheckSucceeded = false
 
     init() {
         self.launchAtLogin = UserDefaults.standard.bool(forKey: "launchAtLogin")
@@ -98,9 +100,13 @@ final class MenuBarViewModel: ObservableObject {
         spinnerFrames = Self.generateSpinnerFrames()
         notificationManager.requestPermission()
 
+        // Start network monitor to handle connectivity restoration
+        startNetworkMonitoring()
+
         // Check for updates on launch
         Task {
-            await checkForUpdates()
+            let success = await checkForUpdates()
+            initialCheckSucceeded = success
             startPeriodicChecks()
         }
 
@@ -319,17 +325,20 @@ final class MenuBarViewModel: ObservableObject {
         }
     }
 
-    func checkForUpdates() async {
-        guard !isRunning else { return }
+    @discardableResult
+    func checkForUpdates() async -> Bool {
+        guard !isRunning else { return false }
 
         isRunning = true
         iconState = .checking
         statusMessage = "Checking for updates..."
 
+        var success = false
         do {
             outdatedPackages = try await brewService.checkOutdated()
             skippedPackages = []
             updateIconState()
+            success = true
         } catch {
             iconState = .upToDate
             print("Failed to check for updates: \(error)")
@@ -337,6 +346,7 @@ final class MenuBarViewModel: ObservableObject {
 
         statusMessage = nil
         isRunning = false
+        return success
     }
 
     func checkForAppUpdate() {
@@ -403,6 +413,19 @@ final class MenuBarViewModel: ObservableObject {
 
     private func restartPeriodicChecks() {
         startPeriodicChecks()
+    }
+
+    private func startNetworkMonitoring() {
+        networkMonitor.startMonitoring { [weak self] in
+            guard let self else { return }
+            // Only trigger check if initial check failed due to no connectivity
+            if !self.initialCheckSucceeded {
+                self.initialCheckSucceeded = true  // Prevent repeated triggers
+                Task { @MainActor in
+                    await self.checkForUpdates()
+                }
+            }
+        }
     }
 
     private func showSuccessAnimation() async {

@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.3.1 — January 2026
+
+### Improvements
+
+- **Automatic retry on network restore** — If the app launches without internet access (e.g., at system startup before WiFi connects), it now automatically checks for updates once connectivity is restored
+
+---
+
 ## v1.3 — January 2026
 
 ### New Features
