@@ -8,13 +8,14 @@ A simple macOS menu bar app for one-click Homebrew updates with automatic backgr
 
 ## Download
 
-**[Download TopOff v1.3](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.3.dmg)** (macOS 14+)
+**[Download TopOff v1.3.1](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.3.1.dmg)** (macOS 14+)
 
 Or view all releases [here](https://github.com/ihazgithub/TopOff/releases).
 
 ## Features
 
 - **Automatic update checking** — Periodically checks for outdated packages in the background
+- **Automatic retry on network restore** — If the app launches without internet (e.g., at startup before WiFi connects), it automatically checks for updates once connectivity is restored
 - **Smart icon status** — Full mug when up-to-date, half-full when updates are available, animated spinner when actively updating
 - **Real-time progress** — See exactly which package is being updated as it happens — click the menu bar during updates to watch live
 - **Package details at a glance** — See outdated package names and version changes directly in the menu
@@ -45,7 +46,7 @@ The menu bar icon tells you at a glance if updates are available:
 
 ### Download (Recommended)
 
-1. Download the [latest DMG](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.3.dmg)
+1. Download the [latest DMG](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.3.1.dmg)
 2. Open the DMG and drag TopOff to your Applications folder
 3. Open TopOff (you may need to right-click → Open the first time)
 
@@ -88,7 +89,7 @@ All preferences are available under the **Settings** submenu:
 ## What's the difference between Update All and Greedy?
 
 | Option | Command | What it does |
-|--------|---------|--------------|
+|--------|---------|--------------| 
 | Update All | `brew upgrade` | Updates packages that don't auto-update |
 | Update All (Greedy) | `brew upgrade --greedy` | Also updates apps with built-in auto-update (Chrome, VSCode, etc.) |
 
