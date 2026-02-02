@@ -8,7 +8,7 @@ A simple macOS menu bar app for one-click Homebrew updates with automatic backgr
 
 ## Download
 
-**[Download TopOff v1.3.1](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.3.1.dmg)** (macOS 14+)
+**[Download TopOff v1.4](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.4.dmg)** (macOS 14+)
 
 Or view all releases [here](https://github.com/ihazgithub/TopOff/releases).
 
@@ -20,7 +20,8 @@ Or view all releases [here](https://github.com/ihazgithub/TopOff/releases).
 - **Real-time progress** — See exactly which package is being updated as it happens — click the menu bar during updates to watch live
 - **Package details at a glance** — See outdated package names and version changes directly in the menu
 - **One-click updates** — Run `brew update && brew upgrade` from your menu bar
-- **Selective updates** — Update or skip individual packages (enable in Settings)
+- **Selective updates** — Update or skip individual packages
+- **Update history** — View recently updated packages with version changes
 - **Greedy mode** — Force-update apps that auto-update (Chrome, Slack, etc.)
 - **Admin retry for protected packages** — If a cask needs admin access, TopOff prompts for your password and retries automatically
 - **Auto cleanup** — Automatically runs `brew cleanup` after upgrades to free disk space
@@ -46,7 +47,7 @@ The menu bar icon tells you at a glance if updates are available:
 
 ### Download (Recommended)
 
-1. Download the [latest DMG](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.3.1.dmg)
+1. Download the [latest DMG](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.4.dmg)
 2. Open the DMG and drag TopOff to your Applications folder
 3. Open TopOff (you may need to right-click → Open the first time)
 
@@ -69,14 +70,14 @@ The menu bar icon tells you at a glance if updates are available:
 4. Watch the icon animate while updates run
 5. Check the menu to see what was upgraded and how much disk space was freed
 
-### Settings
+### Options
 
-All preferences are available under the **Settings** submenu:
+All preferences are available under the **Options** submenu:
 
-- **Selective Updates** — Enable to update or skip individual packages
 - **Auto Cleanup** — Automatically runs `brew cleanup` after upgrades (on by default). Disable to use the manual Clean Up button instead.
 - **Launch at Login** — Start TopOff when you log in
 - **Check Interval** — How often TopOff checks for outdated packages:
+- **View Update History** — See recently updated packages with version changes
 
 | Setting | Behavior |
 |---------|----------|

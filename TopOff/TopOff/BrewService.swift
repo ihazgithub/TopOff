@@ -24,14 +24,21 @@ struct OutdatedPackage: Identifiable {
     let latestVersion: String
 }
 
-struct UpgradedPackage: Identifiable {
-    let id = UUID()
+struct UpgradedPackage: Identifiable, Codable {
+    let id: UUID
     let name: String
     let oldVersion: String
     let newVersion: String
+
+    init(name: String, oldVersion: String, newVersion: String) {
+        self.id = UUID()
+        self.name = name
+        self.oldVersion = oldVersion
+        self.newVersion = newVersion
+    }
 }
 
-struct UpdateResult {
+struct UpdateResult: Codable {
     let packages: [UpgradedPackage]
     let timestamp: Date
 

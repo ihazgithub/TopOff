@@ -20,24 +20,16 @@ struct TopOffApp: App {
                 let displayPackages = Array(visible.prefix(5))
                 let overflow = visible.count - displayPackages.count
 
-                if viewModel.selectiveUpdatesEnabled {
-                    ForEach(displayPackages) { package in
-                        Menu("\(package.name)  \(package.currentVersion) → \(package.latestVersion)") {
-                            Button("Update") {
-                                viewModel.upgradePackage(package)
-                            }
-                            Button("Skip") {
-                                viewModel.skipPackage(package)
-                            }
+                ForEach(displayPackages) { package in
+                    Menu("\(package.name)  \(package.currentVersion) → \(package.latestVersion)") {
+                        Button("Update") {
+                            viewModel.upgradePackage(package)
                         }
-                        .disabled(viewModel.isRunning)
+                        Button("Skip") {
+                            viewModel.skipPackage(package)
+                        }
                     }
-                } else {
-                    ForEach(displayPackages) { package in
-                        Text("\(package.name)  \(package.currentVersion) → \(package.latestVersion)")
-                            .font(.system(.body, design: .monospaced))
-                            .foregroundStyle(.secondary)
-                    }
+                    .disabled(viewModel.isRunning)
                 }
 
                 if overflow > 0 {
@@ -98,9 +90,8 @@ struct TopOffApp: App {
                 Divider()
             }
 
-            // Settings submenu
-            Menu("Settings") {
-                Toggle("Selective Updates", isOn: $viewModel.selectiveUpdatesEnabled)
+            // Options submenu
+            Menu("Options") {
                 Toggle("Auto Cleanup", isOn: $viewModel.autoCleanupEnabled)
                 Toggle("Launch at Login", isOn: $viewModel.launchAtLogin)
 
@@ -112,6 +103,13 @@ struct TopOffApp: App {
                     Text("Every 12 Hours").tag(43200.0 as TimeInterval)
                     Text("Every 24 Hours").tag(86400.0 as TimeInterval)
                     Text("Manual Only").tag(0.0 as TimeInterval)
+                }
+
+                Divider()
+
+                Button("View Update History") {
+                    openWindow(id: "history")
+                    NSApp.activate(ignoringOtherApps: true)
                 }
             }
 
@@ -138,6 +136,13 @@ struct TopOffApp: App {
 
         Window("About TopOff", id: "about") {
             AboutView()
+                .environmentObject(viewModel)
+        }
+        .windowResizability(.contentSize)
+        .defaultPosition(.center)
+
+        Window("Update History", id: "history") {
+            HistoryView()
                 .environmentObject(viewModel)
         }
         .windowResizability(.contentSize)

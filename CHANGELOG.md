@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.4 — February 2026
+
+### New Features
+
+- **Update History** — View your recent package updates with version details. Access via Options → "View Update History" (stores last 20 updates)
+
+### Fixes
+
+- **Intel Mac support** — Now runs on both Apple Silicon and Intel Macs
+
+---
+
 ## v1.3.1 — January 2026
 
 ### Improvements

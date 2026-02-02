@@ -61,11 +61,6 @@ final class MenuBarViewModel: ObservableObject {
             updateLaunchAtLogin()
         }
     }
-    @Published var selectiveUpdatesEnabled: Bool {
-        didSet {
-            UserDefaults.standard.set(selectiveUpdatesEnabled, forKey: "selectiveUpdatesEnabled")
-        }
-    }
     @Published var autoCleanupEnabled: Bool {
         didSet {
             UserDefaults.standard.set(autoCleanupEnabled, forKey: "autoCleanupEnabled")
@@ -76,6 +71,11 @@ final class MenuBarViewModel: ObservableObject {
     @Published var isCheckingForAppUpdate = false
     @Published var appUpdateChecked = false
     @Published var spinnerFrame: NSImage?
+    @Published var updateHistory: [UpdateResult] = [] {
+        didSet {
+            saveUpdateHistory()
+        }
+    }
 
     private let brewService = BrewService()
     private let updateChecker = UpdateChecker()
@@ -90,7 +90,6 @@ final class MenuBarViewModel: ObservableObject {
     init() {
         self.launchAtLogin = UserDefaults.standard.bool(forKey: "launchAtLogin")
         self.checkInterval = UserDefaults.standard.object(forKey: "checkInterval") as? TimeInterval ?? 14400
-        self.selectiveUpdatesEnabled = UserDefaults.standard.bool(forKey: "selectiveUpdatesEnabled")
         // Default to true for auto cleanup — UserDefaults.bool returns false if key doesn't exist
         if UserDefaults.standard.object(forKey: "autoCleanupEnabled") == nil {
             self.autoCleanupEnabled = true
@@ -98,6 +97,7 @@ final class MenuBarViewModel: ObservableObject {
             self.autoCleanupEnabled = UserDefaults.standard.bool(forKey: "autoCleanupEnabled")
         }
         spinnerFrames = Self.generateSpinnerFrames()
+        loadUpdateHistory()
         notificationManager.requestPermission()
 
         // Start network monitor to handle connectivity restoration
@@ -142,6 +142,7 @@ final class MenuBarViewModel: ObservableObject {
                     }
                 }
                 lastUpdateResult = result
+                addToHistory(result)
                 outdatedPackages = []
                 skippedPackages = []
 
@@ -178,6 +179,7 @@ final class MenuBarViewModel: ObservableObject {
                             }
                         }
                         lastUpdateResult = result
+                        addToHistory(result)
                         outdatedPackages = []
                         skippedPackages = []
 
@@ -236,6 +238,7 @@ final class MenuBarViewModel: ObservableObject {
                 } else {
                     lastUpdateResult = result
                 }
+                addToHistory(result)
 
                 // Run cleanup if auto cleanup is enabled
                 if autoCleanupEnabled {
@@ -266,6 +269,7 @@ final class MenuBarViewModel: ObservableObject {
                         } else {
                             lastUpdateResult = result
                         }
+                        addToHistory(result)
 
                         if autoCleanupEnabled {
                             statusMessage = "Cleaning up..."
@@ -491,6 +495,29 @@ final class MenuBarViewModel: ObservableObject {
             }
         } catch {
             print("Failed to update launch at login: \(error)")
+        }
+    }
+
+    // MARK: - Update History
+
+    func addToHistory(_ result: UpdateResult) {
+        guard !result.isEmpty else { return }
+        updateHistory.insert(result, at: 0)
+        if updateHistory.count > 20 {
+            updateHistory = Array(updateHistory.prefix(20))
+        }
+    }
+
+    private func saveUpdateHistory() {
+        if let encoded = try? JSONEncoder().encode(updateHistory) {
+            UserDefaults.standard.set(encoded, forKey: "updateHistory")
+        }
+    }
+
+    private func loadUpdateHistory() {
+        if let data = UserDefaults.standard.data(forKey: "updateHistory"),
+           let decoded = try? JSONDecoder().decode([UpdateResult].self, from: data) {
+            updateHistory = decoded
         }
     }
 }
