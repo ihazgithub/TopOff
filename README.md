@@ -1,6 +1,6 @@
 # TopOff 🍺
 
-A simple macOS menu bar app for one-click Homebrew updates with automatic background checking.
+Your Homebrew is running low. TopOff keeps your packages fresh from the menu bar — automatic checks, one-click refills, no terminal tab required.
 
 ![macOS 14+](https://img.shields.io/badge/macOS-14%2B-blue)
 ![Swift](https://img.shields.io/badge/Swift-5-orange)
@@ -8,9 +8,15 @@ A simple macOS menu bar app for one-click Homebrew updates with automatic backgr
 
 ## Download
 
-**[Download TopOff v1.4](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.4.dmg)** (macOS 14+)
+**[Download TopOff v1.4.1](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.4.1.dmg)** (macOS 14+)
 
 Or view all releases [here](https://github.com/ihazgithub/TopOff/releases).
+
+## Why TopOff?
+
+If you use Homebrew, you've probably forgotten to run `brew update && brew upgrade` for weeks at a time. Packages get stale, security patches wait, and when you finally remember, you're stuck watching terminal output scroll.
+
+TopOff fixes this — it checks in the background and shows you at a glance when your system needs a refill. One click and you're up to date.
 
 ## Features
 
