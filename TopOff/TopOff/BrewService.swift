@@ -115,12 +115,13 @@ final class BrewService {
 
     private func parseUpgradeOutput(_ output: String) -> [UpgradedPackage] {
         var packages: [UpgradedPackage] = []
+        var capturedNames = Set<String>()  // Track captured packages to avoid duplicates
 
-        // Look for lines like "==> Upgrading foo 1.0 -> 2.0" or "foo 1.0 -> 2.0"
         let lines = output.components(separatedBy: .newlines)
 
         for line in lines {
-            // Match patterns like "package 1.0 -> 2.0" or "==> Upgrading package 1.0 -> 2.0"
+            // Pattern 1: "package 1.0 -> 2.0" or "==> Upgrading package 1.0 -> 2.0"
+            // This captures version transitions from summary lines and upgrade messages
             if line.contains(" -> ") {
                 let cleanLine = line.replacingOccurrences(of: "==> Upgrading ", with: "")
                                     .replacingOccurrences(of: "==> ", with: "")
@@ -134,12 +135,38 @@ final class BrewService {
                         let oldVersion = leftParts.last ?? ""
                         let newVersion = parts[1].trimmingCharacters(in: .whitespaces)
 
-                        packages.append(UpgradedPackage(
-                            name: name,
-                            oldVersion: oldVersion,
-                            newVersion: newVersion
-                        ))
+                        if !capturedNames.contains(name) {
+                            capturedNames.insert(name)
+                            packages.append(UpgradedPackage(
+                                name: name,
+                                oldVersion: oldVersion,
+                                newVersion: newVersion
+                            ))
+                        }
                     }
+                }
+            }
+            // Pattern 2: "==> Upgrading <name>" for casks that don't show version transition
+            // This catches cask upgrades that only show the package name being upgraded
+            else if line.hasPrefix("==> Upgrading ") {
+                let afterPrefix = line.replacingOccurrences(of: "==> Upgrading ", with: "")
+                                      .trimmingCharacters(in: .whitespaces)
+
+                // Skip summary lines like "1 outdated package:" or "2 outdated packages:"
+                if afterPrefix.contains("outdated package") { continue }
+
+                // Extract package name (first component, handles "chatgpt" or "google-chrome")
+                let components = afterPrefix.components(separatedBy: .whitespaces)
+                let name = components.first ?? ""
+
+                if !name.isEmpty && !capturedNames.contains(name) {
+                    capturedNames.insert(name)
+                    // Use "?" for versions when not available in this format
+                    packages.append(UpgradedPackage(
+                        name: name,
+                        oldVersion: "?",
+                        newVersion: "?"
+                    ))
                 }
             }
         }
