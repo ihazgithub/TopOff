@@ -55,7 +55,10 @@ The menu bar icon tells you at a glance if updates are available:
 
 1. Download the [latest DMG](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.5.0.dmg)
 2. Open the DMG and drag TopOff to your Applications folder
-3. Open TopOff (you may need to right-click → Open the first time)
+3. **First launch:** macOS will block the app since it's not notarized. To open it:
+   - Go to **System Settings → Privacy & Security**
+   - Scroll down and click **Open Anyway** next to the TopOff message
+   - You only need to do this once (and again after each update)
 
 ### Build from Source
 
