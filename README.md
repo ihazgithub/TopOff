@@ -20,21 +20,21 @@ TopOff fixes this — it checks in the background and shows you at a glance when
 
 ## Features
 
+- **One-click updates** — Run `brew update && brew upgrade` from your menu bar
 - **Automatic update checking** — Periodically checks for outdated packages in the background
-- **Automatic retry on network restore** — If the app launches without internet (e.g., at startup before WiFi connects), it automatically checks for updates once connectivity is restored
 - **Smart icon status** — Full mug when up-to-date, half-full when updates are available, animated spinner when actively updating
 - **Real-time progress** — See exactly which package is being updated as it happens — click the menu bar during updates to watch live
 - **Package details at a glance** — See outdated package names and version changes directly in the menu
-- **One-click updates** — Run `brew update && brew upgrade` from your menu bar
 - **Selective updates** — Update or skip individual packages
-- **Update history** — View recently updated packages with version changes
 - **Greedy mode toggle** — Enable to include apps that auto-update (Chrome, Slack, etc.) in scheduled checks and hide the normal Update All button
-- **Admin retry for protected packages** — If a cask needs admin access, TopOff prompts for your password and retries automatically
 - **Auto cleanup** — Automatically runs `brew cleanup` after upgrades to free disk space
+- **Admin retry for protected packages** — If a cask needs admin access, TopOff prompts for your password and retries automatically
+- **Update history** — View recently updated packages with version changes
 - **Configurable check interval** — Check every hour, 4 hours (default), 12 hours, 24 hours, or manually
-- **See what changed** — View upgraded packages and freed disk space in the menu
-- **Update notifications** — Checks GitHub for new releases on launch and lets you know when an update is available
 - **Launch at login** — Always have TopOff ready
+- **Automatic retry on network restore** — If the app launches without internet (e.g., at startup before WiFi connects), it automatically checks for updates once connectivity is restored
+- **Update notifications** — Checks GitHub for new releases on launch and lets you know when an update is available
+- **See what changed** — View upgraded packages and freed disk space in the menu
 
 ## Screenshots
 
