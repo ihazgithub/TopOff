@@ -66,6 +66,11 @@ final class MenuBarViewModel: ObservableObject {
             UserDefaults.standard.set(autoCleanupEnabled, forKey: "autoCleanupEnabled")
         }
     }
+    @Published var greedyModeEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(greedyModeEnabled, forKey: "greedyModeEnabled")
+        }
+    }
 
     @Published var appUpdateInfo: AppUpdateInfo?
     @Published var isCheckingForAppUpdate = false
@@ -96,6 +101,7 @@ final class MenuBarViewModel: ObservableObject {
         } else {
             self.autoCleanupEnabled = UserDefaults.standard.bool(forKey: "autoCleanupEnabled")
         }
+        self.greedyModeEnabled = UserDefaults.standard.bool(forKey: "greedyModeEnabled")
         spinnerFrames = Self.generateSpinnerFrames()
         loadUpdateHistory()
         notificationManager.requestPermission()
@@ -339,7 +345,7 @@ final class MenuBarViewModel: ObservableObject {
 
         var success = false
         do {
-            outdatedPackages = try await brewService.checkOutdated()
+            outdatedPackages = try await brewService.checkOutdated(greedy: greedyModeEnabled)
             skippedPackages = []
             updateIconState()
             success = true

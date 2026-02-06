@@ -75,7 +75,7 @@ final class BrewService {
         Self.findBrewPath()
     }
 
-    func checkOutdated() async throws -> [OutdatedPackage] {
+    func checkOutdated(greedy: Bool = false) async throws -> [OutdatedPackage] {
         guard let brewPath = brewPath else {
             throw BrewError.brewNotFound
         }
@@ -84,7 +84,11 @@ final class BrewService {
         _ = try await runCommand(brewPath, arguments: ["update"])
 
         // Then check what's outdated with verbose output for version info
-        let output = try await runCommand(brewPath, arguments: ["outdated", "--verbose"])
+        var outdatedArgs = ["outdated", "--verbose"]
+        if greedy {
+            outdatedArgs.append("--greedy")
+        }
+        let output = try await runCommand(brewPath, arguments: outdatedArgs)
         return parseOutdatedVerbose(output)
     }
 

@@ -8,7 +8,7 @@ Your Homebrew is running low. TopOff keeps your packages fresh from the menu bar
 
 ## Download
 
-**[Download TopOff v1.4.2](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.4.2.dmg)** (macOS 14+)
+**[Download TopOff v1.5.0](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.5.0.dmg)** (macOS 14+)
 
 Or view all releases [here](https://github.com/ihazgithub/TopOff/releases).
 
@@ -28,7 +28,7 @@ TopOff fixes this — it checks in the background and shows you at a glance when
 - **One-click updates** — Run `brew update && brew upgrade` from your menu bar
 - **Selective updates** — Update or skip individual packages
 - **Update history** — View recently updated packages with version changes
-- **Greedy mode** — Force-update apps that auto-update (Chrome, Slack, etc.)
+- **Greedy mode toggle** — Enable to include apps that auto-update (Chrome, Slack, etc.) in scheduled checks and hide the normal Update All button
 - **Admin retry for protected packages** — If a cask needs admin access, TopOff prompts for your password and retries automatically
 - **Auto cleanup** — Automatically runs `brew cleanup` after upgrades to free disk space
 - **Configurable check interval** — Check every hour, 4 hours (default), 12 hours, 24 hours, or manually
@@ -53,7 +53,7 @@ The menu bar icon tells you at a glance if updates are available:
 
 ### Download (Recommended)
 
-1. Download the [latest DMG](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.4.2.dmg)
+1. Download the [latest DMG](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.5.0.dmg)
 2. Open the DMG and drag TopOff to your Applications folder
 3. Open TopOff (you may need to right-click → Open the first time)
 
@@ -80,8 +80,9 @@ The menu bar icon tells you at a glance if updates are available:
 
 All preferences are available under the **Options** submenu:
 
-- **Auto Cleanup** — Automatically runs `brew cleanup` after upgrades (on by default). Disable to use the manual Clean Up button instead.
 - **Launch at Login** — Start TopOff when you log in
+- **Auto Cleanup** — Automatically runs `brew cleanup` after upgrades (on by default). Disable to use the manual Clean Up button instead.
+- **Greedy Mode** — When enabled, scheduled checks use `brew outdated --greedy` to include apps with built-in auto-update (Chrome, Slack, etc.). Also hides the normal "Update All" button, leaving only "Update All (Greedy)".
 - **Check Interval** — How often TopOff checks for outdated packages:
 - **View Update History** — See recently updated packages with version changes
 

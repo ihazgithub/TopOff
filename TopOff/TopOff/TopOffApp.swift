@@ -41,10 +41,12 @@ struct TopOffApp: App {
             }
 
             // Primary actions
-            Button("Update All") {
-                viewModel.updateAll(greedy: false)
+            if !viewModel.greedyModeEnabled {
+                Button("Update All") {
+                    viewModel.updateAll(greedy: false)
+                }
+                .disabled(viewModel.isRunning)
             }
-            .disabled(viewModel.isRunning)
 
             Button("Update All (Greedy)") {
                 viewModel.updateAll(greedy: true)
@@ -92,8 +94,9 @@ struct TopOffApp: App {
 
             // Options submenu
             Menu("Options") {
-                Toggle("Auto Cleanup", isOn: $viewModel.autoCleanupEnabled)
                 Toggle("Launch at Login", isOn: $viewModel.launchAtLogin)
+                Toggle("Auto Cleanup", isOn: $viewModel.autoCleanupEnabled)
+                Toggle("Greedy Mode", isOn: $viewModel.greedyModeEnabled)
 
                 Divider()
 
