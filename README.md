@@ -26,7 +26,7 @@ TopOff fixes this — it checks in the background and shows you at a glance when
 - **Real-time progress** — See exactly which package is being updated as it happens — click the menu bar during updates to watch live
 - **Package details at a glance** — See outdated package names and version changes directly in the menu
 - **Selective updates** — Update or skip individual packages
-- **Greedy mode toggle** — Enable to include apps that auto-update (Chrome, Slack, etc.) in scheduled checks and hide the normal Update All button
+- **Greedy mode** — Optionally include apps that handle their own updates (Chrome, Slack, etc.) in both scheduled checks and upgrades
 - **Auto cleanup** — Automatically runs `brew cleanup` after upgrades to free disk space
 - **Admin retry for protected packages** — If a cask needs admin access, TopOff prompts for your password and retries automatically
 - **Update history** — View recently updated packages with version changes
@@ -82,7 +82,7 @@ All preferences are available under the **Options** submenu:
 
 - **Launch at Login** — Start TopOff when you log in
 - **Auto Cleanup** — Automatically runs `brew cleanup` after upgrades (on by default). Disable to use the manual Clean Up button instead.
-- **Greedy Mode** — When enabled, scheduled checks use `brew outdated --greedy` to include apps with built-in auto-update (Chrome, Slack, etc.). Also hides the normal "Update All" button, leaving only "Update All (Greedy)".
+- **Greedy Mode** — Always check and update everything, including apps that auto-update themselves (off by default — see [Greedy Mode explained](#whats-the-difference-between-update-all-and-greedy))
 - **Check Interval** — How often TopOff checks for outdated packages:
 - **View Update History** — See recently updated packages with version changes
 
@@ -96,10 +96,24 @@ All preferences are available under the **Options** submenu:
 
 ## What's the difference between Update All and Greedy?
 
-| Option | Command | What it does |
-|--------|---------|--------------| 
-| Update All | `brew upgrade` | Updates packages that don't auto-update |
-| Update All (Greedy) | `brew upgrade --greedy` | Also updates apps with built-in auto-update (Chrome, VSCode, etc.) |
+Some casks (Chrome, Slack, VSCode, etc.) have built-in auto-update and are normally skipped by Homebrew. Greedy mode tells Homebrew to update them anyway.
+
+**By default**, TopOff gives you both options:
+
+| Button | Command | What it does |
+|--------|---------|--------------|
+| Update All | `brew upgrade` | Updates packages that don't auto-update themselves |
+| Update All (Greedy) | `brew upgrade --greedy` | Updates everything, including apps that auto-update |
+
+Scheduled background checks use normal mode, so those auto-updating apps won't show up as outdated.
+
+**With Greedy Mode enabled** (in Options), TopOff switches to greedy everywhere:
+
+- Scheduled checks use `brew outdated --greedy` so auto-updating apps appear as outdated
+- The normal "Update All" button is hidden since "Update All (Greedy)" covers everything
+- This is ideal if you prefer Homebrew to manage all your app updates in one place
+
+Greedy Mode is off by default. You can toggle it anytime under **Options > Greedy Mode**.
 
 ## Privacy & Network Connections
 
