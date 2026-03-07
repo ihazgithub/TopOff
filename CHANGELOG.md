@@ -6,10 +6,6 @@
 
 - **Admin update flow fixed** — Retrying protected upgrades now uses a Homebrew-compatible authentication path, so updates continue after entering your password instead of stalling
 
-### Improvements
-
-- **DMG install experience refreshed** — Updated installer background with clearer drag direction and install guidance text
-
 ---
 
 ## v1.4 — February 2026
