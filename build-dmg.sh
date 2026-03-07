@@ -8,7 +8,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$SCRIPT_DIR/TopOff"
 BUILD_DIR="$SCRIPT_DIR/build"
-ASSETS_DIR="$BUILD_DIR/dmg-assets"
+ASSETS_DIR="$SCRIPT_DIR/assets/dmg"
 BG_IMAGE="$ASSETS_DIR/background.png"
 
 # Get version from argument or read from project

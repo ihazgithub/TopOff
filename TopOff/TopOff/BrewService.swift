@@ -249,7 +249,7 @@ final class BrewService {
         return CleanupResult(freedSpace: "", timestamp: Date())
     }
 
-    private func runCommand(_ command: String, arguments: [String]) async throws -> String {
+    private func runCommand(_ command: String, arguments: [String], extraEnvironment: [String: String] = [:]) async throws -> String {
         try await withCheckedThrowingContinuation { continuation in
             let process = Process()
             let pipe = Pipe()
@@ -262,6 +262,7 @@ final class BrewService {
             // Set up environment to find brew dependencies
             var environment = ProcessInfo.processInfo.environment
             environment["PATH"] = "/opt/homebrew/bin:/usr/local/bin:" + (environment["PATH"] ?? "")
+            environment.merge(extraEnvironment) { _, new in new }
             process.environment = environment
 
             process.terminationHandler = { _ in
@@ -283,7 +284,12 @@ final class BrewService {
         }
     }
 
-    private func runCommandStreaming(_ command: String, arguments: [String], onLine: @escaping @Sendable (String) -> Void) async throws -> String {
+    private func runCommandStreaming(
+        _ command: String,
+        arguments: [String],
+        extraEnvironment: [String: String] = [:],
+        onLine: @escaping @Sendable (String) -> Void
+    ) async throws -> String {
         try await withCheckedThrowingContinuation { continuation in
             let process = Process()
             let pipe = Pipe()
@@ -296,6 +302,7 @@ final class BrewService {
 
             var environment = ProcessInfo.processInfo.environment
             environment["PATH"] = "/opt/homebrew/bin:/usr/local/bin:" + (environment["PATH"] ?? "")
+            environment.merge(extraEnvironment) { _, new in new }
             process.environment = environment
 
             pipe.fileHandleForReading.readabilityHandler = { handle in
@@ -352,46 +359,79 @@ final class BrewService {
 
     // MARK: - Admin Privilege Execution
 
-    private func runCommandWithAdmin(_ command: String, arguments: [String]) async throws -> String {
-        let fullCommand = ([command] + arguments)
-            .map { $0.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "'", with: "'\\''") }
-            .joined(separator: " ")
+    private func createAskpassScript() throws -> String {
+        let script = """
+        #!/bin/sh
+        PROMPT="$1"
+        if [ -z "$PROMPT" ]; then
+          PROMPT="Administrator access is required to continue."
+        fi
 
-        let appleScript = "do shell script \"\(fullCommand)\" with administrator privileges"
+        PASSWORD=$(/usr/bin/osascript - "$PROMPT" <<'APPLESCRIPT'
+        on run argv
+            set promptText to "Password:"
+            if (count of argv) > 0 then
+                set promptText to item 1 of argv
+            end if
+            try
+                display dialog promptText with title "TopOff" default answer "" buttons {"Cancel", "OK"} default button "OK" with hidden answer
+                return text returned of result
+            on error number -128
+                error "User canceled" number 1
+            end try
+        end run
+        APPLESCRIPT
+        )
 
-        return try await withCheckedThrowingContinuation { continuation in
-            let process = Process()
-            let pipe = Pipe()
-            let errorPipe = Pipe()
+        if [ $? -ne 0 ]; then
+          exit 1
+        fi
 
-            process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-            process.arguments = ["-e", appleScript]
-            process.standardOutput = pipe
-            process.standardError = errorPipe
+        printf '%s\\n' "$PASSWORD"
+        """
 
-            process.terminationHandler = { _ in
-                let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-                let output = String(data: data, encoding: .utf8) ?? ""
-                let errorOutput = String(data: errorData, encoding: .utf8) ?? ""
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("topoff-askpass-\(UUID().uuidString).sh")
+        try script.write(to: url, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: url.path)
+        return url.path
+    }
 
-                if process.terminationStatus == 0 {
-                    continuation.resume(returning: output)
-                } else {
-                    // User cancelled the password dialog
-                    if errorOutput.contains("User canceled") || errorOutput.contains("user canceled") {
-                        continuation.resume(throwing: BrewError.commandFailed("Admin authentication cancelled by user."))
-                    } else {
-                        continuation.resume(throwing: BrewError.commandFailed(errorOutput.isEmpty ? output : errorOutput))
-                    }
-                }
+    private func runCommandWithAdmin(
+        _ command: String,
+        arguments: [String],
+        onLine: (@Sendable (String) -> Void)? = nil
+    ) async throws -> String {
+        let askpassPath = try createAskpassScript()
+        defer { try? FileManager.default.removeItem(atPath: askpassPath) }
+
+        let environment = [
+            "SUDO_ASKPASS": askpassPath
+        ]
+
+        do {
+            if let onLine {
+                return try await runCommandStreaming(
+                    command,
+                    arguments: arguments,
+                    extraEnvironment: environment,
+                    onLine: onLine
+                )
+            } else {
+                return try await runCommand(
+                    command,
+                    arguments: arguments,
+                    extraEnvironment: environment
+                )
             }
-
-            do {
-                try process.run()
-            } catch {
-                continuation.resume(throwing: error)
+        } catch BrewError.commandFailed(let output) {
+            let lowercased = output.lowercased()
+            if lowercased.contains("user canceled") ||
+               lowercased.contains("user cancelled") ||
+               lowercased.contains("no password was provided") {
+                throw BrewError.commandFailed("Admin authentication cancelled by user.")
             }
+            throw BrewError.commandFailed(output)
         }
     }
 
@@ -405,14 +445,11 @@ final class BrewService {
             upgradeArgs.append("--greedy")
         }
 
-        let upgradeOutput = try await runCommandWithAdmin(brewPath, arguments: upgradeArgs)
-
-        if let onProgress {
-            let lines = upgradeOutput.components(separatedBy: .newlines)
-            for line in lines where !line.isEmpty {
-                onProgress(line)
-            }
-        }
+        let upgradeOutput = try await runCommandWithAdmin(
+            brewPath,
+            arguments: upgradeArgs,
+            onLine: onProgress
+        )
 
         let packages = parseUpgradeOutput(upgradeOutput)
         return UpdateResult(packages: packages, timestamp: Date())
