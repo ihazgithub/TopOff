@@ -8,7 +8,7 @@ Your Homebrew is running low. TopOff keeps your packages fresh from the menu bar
 
 ## Download
 
-**[Download TopOff v1.6.0](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.6.0.dmg)** (macOS 14+)
+**[Download TopOff v1.6.0](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.6.dmg)** (macOS 14+)
 
 Or view all releases [here](https://github.com/ihazgithub/TopOff/releases).
 
@@ -53,7 +53,7 @@ The menu bar icon tells you at a glance if updates are available:
 
 ### Download (Recommended)
 
-1. Download the [latest DMG](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.6.0.dmg)
+1. Download the [latest DMG](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.6.dmg)
 2. Open the DMG and drag TopOff to your Applications folder
 3. **First launch:** macOS will block the app since it's not notarized. To open it:
    - Go to **System Settings → Privacy & Security**
