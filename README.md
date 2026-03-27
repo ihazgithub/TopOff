@@ -142,6 +142,12 @@ You can safely allow or deny these connections based on your preferences — den
 
 MIT License - feel free to use, modify, and distribute.
 
+## Attribution
+
+TopOff is open source under the MIT License.
+
+If you use, fork, or build on TopOff, attribution to Thomas Haslam and a link to the original project are appreciated where practical, such as in your README, credits, or release notes.
+
 ## Credits
 
 Created by **Thomas Haslam**
