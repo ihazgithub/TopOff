@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.7.0 — March 2026
+## v1.7 — March 2026
 
 ### Improvements
 

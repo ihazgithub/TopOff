@@ -8,7 +8,7 @@ Your Homebrew is running low. TopOff keeps your packages fresh from the menu bar
 
 ## Download
 
-**[Download TopOff v1.7.0](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.7.dmg)** (macOS 14+)
+**[Download TopOff v1.7](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.7.dmg)** (macOS 14+)
 
 Or view all releases [here](https://github.com/ihazgithub/TopOff/releases).
 
