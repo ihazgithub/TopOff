@@ -113,11 +113,11 @@ final class BrewService {
         }
 
         // Parse the upgrade output to find upgraded packages
-        let packages = parseUpgradeOutput(upgradeOutput)
+        let packages = Self.parseUpgradeOutput(upgradeOutput)
         return UpdateResult(packages: packages, timestamp: Date())
     }
 
-    private func parseUpgradeOutput(_ output: String) -> [UpgradedPackage] {
+    static func parseUpgradeOutput(_ output: String) -> [UpgradedPackage] {
         var packages: [UpgradedPackage] = []
         var capturedNames = Set<String>()  // Track captured packages to avoid duplicates
 
@@ -217,7 +217,7 @@ final class BrewService {
         }
 
         let upgradeOutput = try await runCommand(brewPath, arguments: ["upgrade", name])
-        let packages = parseUpgradeOutput(upgradeOutput)
+        let packages = Self.parseUpgradeOutput(upgradeOutput)
         return UpdateResult(packages: packages, timestamp: Date())
     }
 
@@ -451,7 +451,7 @@ final class BrewService {
             onLine: onProgress
         )
 
-        let packages = parseUpgradeOutput(upgradeOutput)
+        let packages = Self.parseUpgradeOutput(upgradeOutput)
         return UpdateResult(packages: packages, timestamp: Date())
     }
 
@@ -461,7 +461,7 @@ final class BrewService {
         }
 
         let upgradeOutput = try await runCommandWithAdmin(brewPath, arguments: ["upgrade", name])
-        let packages = parseUpgradeOutput(upgradeOutput)
+        let packages = Self.parseUpgradeOutput(upgradeOutput)
         return UpdateResult(packages: packages, timestamp: Date())
     }
 }

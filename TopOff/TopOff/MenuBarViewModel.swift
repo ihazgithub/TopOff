@@ -451,13 +451,15 @@ final class MenuBarViewModel: ObservableObject {
         iconAnimationTimer?.invalidate()
         spinnerFrameIndex = 0
         spinnerFrame = spinnerFrames.first
-        iconAnimationTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self, !self.spinnerFrames.isEmpty else { return }
                 self.spinnerFrameIndex = (self.spinnerFrameIndex + 1) % self.spinnerFrames.count
                 self.spinnerFrame = self.spinnerFrames[self.spinnerFrameIndex]
             }
         }
+        RunLoop.main.add(timer, forMode: .common)
+        iconAnimationTimer = timer
     }
 
     private func stopIconAnimation() {

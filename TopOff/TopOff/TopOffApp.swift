@@ -97,6 +97,7 @@ struct TopOffApp: App {
                 Toggle("Launch at Login", isOn: $viewModel.launchAtLogin)
                 Toggle("Auto Cleanup", isOn: $viewModel.autoCleanupEnabled)
                 Toggle("Greedy Mode", isOn: $viewModel.greedyModeEnabled)
+                    .help("Includes apps with built-in auto-update in both checks and upgrades, such as Chrome, Slack, and VS Code.")
 
                 Divider()
 

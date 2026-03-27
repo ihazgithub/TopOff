@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.7.0 — March 2026
+
+### Improvements
+
+- **Spinner stays visible during updates** — The menu bar icon now keeps rotating even while the menu is open, so it’s clear an update is still in progress
+- **Greedy Mode help text** — Added a tooltip explaining that Greedy Mode includes apps with built-in auto-update in both checks and upgrades
+
+---
+
 ## v1.6.0 — March 2026
 
 ### Fixes
