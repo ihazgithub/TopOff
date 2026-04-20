@@ -1,14 +1,8 @@
 {
   "images" : [
     {
-      "filename" : "beer-mug-full.png",
-      "idiom" : "mac",
-      "scale" : "1x"
-    },
-    {
-      "filename" : "beer-mug-full@2x.png",
-      "idiom" : "mac",
-      "scale" : "2x"
+      "filename" : "beer-mug-full.svg",
+      "idiom" : "mac"
     }
   ],
   "info" : {
@@ -16,6 +10,7 @@
     "version" : 1
   },
   "properties" : {
+    "preserves-vector-representation" : true,
     "template-rendering-intent" : "template"
   }
 }

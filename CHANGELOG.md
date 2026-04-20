@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.7.1 — April 2026
+
+### Improvements
+
+- **Refined menu bar mug icons** — Tightened the full and half mug artwork for a cleaner look while keeping the original TopOff character
+- **Vector-backed menu bar assets** — Switched the menu bar image sets to SVG-backed assets for cleaner rendering and simpler maintenance
+
+### Fixes
+
+- **Asset catalog cleanup** — Added the missing accent color asset and removed asset-catalog warnings from the build
+
+---
+
 ## v1.7 — March 2026
 
 ### Improvements
