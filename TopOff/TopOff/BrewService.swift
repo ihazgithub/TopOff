@@ -100,30 +100,60 @@ final class BrewService {
         // Run brew update
         _ = try await runCommand(brewPath, arguments: ["update"])
 
-        // Run brew upgrade with streaming output for progress
-        var upgradeArgs = ["upgrade"]
-        if greedy {
-            upgradeArgs.append("--greedy")
-        }
-        let upgradeOutput: String
-        if let onProgress {
-            upgradeOutput = try await runCommandStreaming(brewPath, arguments: upgradeArgs, onLine: onProgress)
-        } else {
-            upgradeOutput = try await runCommand(brewPath, arguments: upgradeArgs)
+        // Run regular upgrades first, then include greedy casks when requested.
+        var upgradeOutputs: [String] = []
+        for upgradeArgs in Self.upgradeArgumentBatches(greedy: greedy) {
+            let output: String
+            if let onProgress {
+                output = try await runCommandStreaming(brewPath, arguments: upgradeArgs, onLine: onProgress)
+            } else {
+                output = try await runCommand(brewPath, arguments: upgradeArgs)
+            }
+            upgradeOutputs.append(output)
         }
 
         // Parse the upgrade output to find upgraded packages
-        let packages = Self.parseUpgradeOutput(upgradeOutput)
+        let packages = Self.parseUpgradeOutput(upgradeOutputs.joined(separator: "\n"))
         return UpdateResult(packages: packages, timestamp: Date())
+    }
+
+    static func upgradeArgumentBatches(greedy: Bool) -> [[String]] {
+        if greedy {
+            return [
+                ["upgrade"],
+                ["upgrade", "--greedy"]
+            ]
+        }
+
+        return [["upgrade"]]
     }
 
     static func parseUpgradeOutput(_ output: String) -> [UpgradedPackage] {
         var packages: [UpgradedPackage] = []
         var capturedNames = Set<String>()  // Track captured packages to avoid duplicates
+        var isReadingUpgradeSummary = false
 
         let lines = output.components(separatedBy: .newlines)
 
         for line in lines {
+            let trimmedLine = line.trimmingCharacters(in: .whitespaces)
+
+            if trimmedLine.hasPrefix("==> Upgrading "),
+               trimmedLine.contains("outdated package") {
+                isReadingUpgradeSummary = true
+                continue
+            } else if trimmedLine.hasPrefix("==> ") {
+                isReadingUpgradeSummary = false
+            }
+
+            if isReadingUpgradeSummary,
+               let package = parseGreedyCaskSummaryLine(trimmedLine),
+               !capturedNames.contains(package.name) {
+                capturedNames.insert(package.name)
+                packages.append(package)
+                continue
+            }
+
             // Pattern 1: "package 1.0 -> 2.0" or "==> Upgrading package 1.0 -> 2.0"
             // This captures version transitions from summary lines and upgrade messages
             if line.contains(" -> ") {
@@ -176,6 +206,22 @@ final class BrewService {
         }
 
         return packages
+    }
+
+    private static func parseGreedyCaskSummaryLine(_ line: String) -> UpgradedPackage? {
+        guard !line.isEmpty else { return nil }
+
+        let components = line.components(separatedBy: .whitespaces).filter { !$0.isEmpty }
+        guard components.count == 2 else { return nil }
+
+        let versions = components[1].split(separator: ",", maxSplits: 1).map(String.init)
+        guard versions.count == 2 else { return nil }
+
+        return UpgradedPackage(
+            name: components[0],
+            oldVersion: versions[0],
+            newVersion: versions[1]
+        )
     }
 
     private func parseOutdatedVerbose(_ output: String) -> [OutdatedPackage] {
@@ -440,18 +486,17 @@ final class BrewService {
             throw BrewError.brewNotFound
         }
 
-        var upgradeArgs = ["upgrade"]
-        if greedy {
-            upgradeArgs.append("--greedy")
+        var upgradeOutputs: [String] = []
+        for upgradeArgs in Self.upgradeArgumentBatches(greedy: greedy) {
+            let output = try await runCommandWithAdmin(
+                brewPath,
+                arguments: upgradeArgs,
+                onLine: onProgress
+            )
+            upgradeOutputs.append(output)
         }
 
-        let upgradeOutput = try await runCommandWithAdmin(
-            brewPath,
-            arguments: upgradeArgs,
-            onLine: onProgress
-        )
-
-        let packages = Self.parseUpgradeOutput(upgradeOutput)
+        let packages = Self.parseUpgradeOutput(upgradeOutputs.joined(separator: "\n"))
         return UpdateResult(packages: packages, timestamp: Date())
     }
 

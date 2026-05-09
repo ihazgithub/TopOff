@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.8 — May 2026
+
+### Improvements
+
+- **Refreshed app artwork** — TopOff has a new app icon and updated release artwork for a cleaner, more polished look
+- **Background app update checks** — TopOff now checks for new app releases on launch and periodically while running
+
+### Fixes
+
+- **Fixed Greedy updates** — Update All (Greedy) now upgrades regular outdated packages as well as greedy-only casks
+- **Improved Greedy Mode update history** — Version changes for greedy cask upgrades are now captured more reliably when Homebrew reports them in its upgrade summary
+
+---
+
 ## v1.7.1 — April 2026
 
 ### Improvements

@@ -10,6 +10,7 @@ PROJECT_DIR="$SCRIPT_DIR/TopOff"
 BUILD_DIR="$SCRIPT_DIR/build"
 ASSETS_DIR="$SCRIPT_DIR/assets/dmg"
 BG_IMAGE="$ASSETS_DIR/background.png"
+VOLUME_ICON="$ASSETS_DIR/volume-icon.icns"
 
 # Get version from argument or read from project
 if [ -n "$1" ]; then
@@ -65,6 +66,9 @@ cp -R "$RELEASE_APP" "$MOUNT_POINT/"
 ln -s /Applications "$MOUNT_POINT/Applications"
 mkdir "$MOUNT_POINT/.background"
 cp "$BG_IMAGE" "$MOUNT_POINT/.background/background.png"
+cp "$VOLUME_ICON" "$MOUNT_POINT/.VolumeIcon.icns"
+SetFile -a V "$MOUNT_POINT/.VolumeIcon.icns"
+SetFile -a C "$MOUNT_POINT"
 
 # Unmount nobrowse, remount for Finder
 hdiutil detach "$MOUNT_POINT" > /dev/null 2>&1
@@ -86,8 +90,8 @@ tell application "Finder"
         set icon size of theViewOptions to 80
         set background picture of theViewOptions to file ".background:background.png"
 
-        set position of item "TopOff.app" of container window to {125, 155}
-        set position of item "Applications" of container window to {375, 155}
+        set position of item "TopOff.app" of container window to {105, 170}
+        set position of item "Applications" of container window to {395, 170}
 
         close
         open
@@ -97,6 +101,11 @@ tell application "Finder"
     end tell
 end tell
 APPLESCRIPT
+
+# Reapply the custom volume icon after Finder writes the window metadata.
+cp "$VOLUME_ICON" "$MOUNT_POINT/.VolumeIcon.icns"
+SetFile -a V "$MOUNT_POINT/.VolumeIcon.icns"
+SetFile -a C "$MOUNT_POINT"
 
 # Convert to compressed read-only DMG
 hdiutil detach "$MOUNT_POINT" > /dev/null 2>&1

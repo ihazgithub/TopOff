@@ -27,6 +27,10 @@ final class BrewServiceTests: XCTestCase {
         )
     }
 
+    func testAppUpdateCheckIntervalIsSixHours() {
+        XCTAssertEqual(MenuBarViewModel.appUpdateCheckInterval, 21_600)
+    }
+
     func testParseUpgradeOutputCapturesFormulaVersionTransitions() {
         let output = """
         ==> Upgrading node 20.1.0 -> 22.0.0
@@ -44,8 +48,6 @@ final class BrewServiceTests: XCTestCase {
 
     func testParseUpgradeOutputCapturesGreedyCaskUpgradeWithoutVersions() {
         let output = """
-        ==> Upgrading 1 outdated package:
-        google-chrome 136.0.0,137.0.0
         ==> Upgrading google-chrome
         ==> Downloading https://dl.google.com/chrome/mac/universal/stable/GGRO/googlechrome.dmg
         """
@@ -56,6 +58,26 @@ final class BrewServiceTests: XCTestCase {
         XCTAssertEqual(packages.first?.name, "google-chrome")
         XCTAssertEqual(packages.first?.oldVersion, "?")
         XCTAssertEqual(packages.first?.newVersion, "?")
+    }
+
+    func testParseUpgradeOutputCapturesGreedyCaskSummaryVersions() {
+        let output = """
+        ==> Upgrading 2 outdated packages:
+        google-chrome 136.0.0,137.0.0
+        visual-studio-code 1.99.0,1.100.0
+        ==> Upgrading google-chrome
+        ==> Upgrading visual-studio-code
+        """
+
+        let packages = BrewService.parseUpgradeOutput(output)
+
+        XCTAssertEqual(packages.count, 2)
+        XCTAssertEqual(packages[0].name, "google-chrome")
+        XCTAssertEqual(packages[0].oldVersion, "136.0.0")
+        XCTAssertEqual(packages[0].newVersion, "137.0.0")
+        XCTAssertEqual(packages[1].name, "visual-studio-code")
+        XCTAssertEqual(packages[1].oldVersion, "1.99.0")
+        XCTAssertEqual(packages[1].newVersion, "1.100.0")
     }
 
     func testParseUpgradeOutputAvoidsDuplicatePackageEntries() {
@@ -69,5 +91,15 @@ final class BrewServiceTests: XCTestCase {
 
         XCTAssertEqual(packages.count, 1)
         XCTAssertEqual(packages.first?.name, "node")
+    }
+
+    func testGreedyUpdateRunsRegularUpgradeBeforeGreedyUpgrade() {
+        XCTAssertEqual(
+            BrewService.upgradeArgumentBatches(greedy: true),
+            [
+                ["upgrade"],
+                ["upgrade", "--greedy"]
+            ]
+        )
     }
 }

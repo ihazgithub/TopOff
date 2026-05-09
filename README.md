@@ -8,7 +8,7 @@ Your Homebrew is running low. TopOff keeps your packages fresh from the menu bar
 
 ## Download
 
-**[Download TopOff v1.7.1](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.7.1.dmg)** (macOS 14+)
+**[Download TopOff v1.8](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.8.dmg)** (macOS 14+)
 
 Or view all releases [here](https://github.com/ihazgithub/TopOff/releases).
 
@@ -33,7 +33,7 @@ TopOff fixes this — it checks in the background and shows you at a glance when
 - **Configurable check interval** — Check every hour, 4 hours (default), 12 hours, 24 hours, or manually
 - **Launch at login** — Always have TopOff ready
 - **Automatic retry on network restore** — If the app launches without internet (e.g., at startup before WiFi connects), it automatically checks for updates once connectivity is restored
-- **Update notifications** — Checks GitHub for new releases on launch and lets you know when an update is available
+- **Update notifications** — Checks GitHub for new releases on launch and periodically while running
 - **See what changed** — View upgraded packages and freed disk space in the menu
 
 ## Screenshots
@@ -53,7 +53,7 @@ The menu bar icon tells you at a glance if updates are available:
 
 ### Download (Recommended)
 
-1. Download the [latest DMG](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.7.1.dmg)
+1. Download the [latest DMG](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.8.dmg)
 2. Open the DMG and drag TopOff to your Applications folder
 3. **First launch:** macOS will block the app since it's not notarized. To open it:
    - Go to **System Settings → Privacy & Security**
@@ -106,7 +106,7 @@ Some casks (Chrome, Slack, VSCode, etc.) have built-in auto-update and are norma
 | Button | Command | What it does |
 |--------|---------|--------------|
 | Update All | `brew upgrade` | Updates packages that don't auto-update themselves |
-| Update All (Greedy) | `brew upgrade --greedy` | Updates everything, including apps that auto-update |
+| Update All (Greedy) | `brew upgrade`, then `brew upgrade --greedy` | Updates everything, including apps that auto-update |
 
 Scheduled background checks use normal mode, so those auto-updating apps won't show up as outdated.
 
@@ -122,7 +122,7 @@ Greedy Mode is off by default. You can toggle it anytime under **Options > Greed
 
 TopOff makes only one network connection:
 
-- **GitHub API** (`api.github.com`) — Checks for new TopOff releases on app launch
+- **GitHub API** (`api.github.com`) — Checks for new TopOff releases on launch and periodically while running
 
 That's it. No analytics, no telemetry, no tracking.
 
