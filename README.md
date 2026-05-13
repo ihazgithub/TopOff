@@ -1,22 +1,22 @@
-# TopOff 🍺
+<p align="center">
+  <img src="docs/assets/topoff-icon-transparent.png" alt="TopOff app icon" width="112">
+</p>
 
-Your Homebrew is running low. TopOff keeps your packages fresh from the menu bar — automatic checks, one-click refills, no terminal tab required.
+<h1 align="center">TopOff</h1>
 
-![macOS 14+](https://img.shields.io/badge/macOS-14%2B-blue)
-![Swift](https://img.shields.io/badge/Swift-5-orange)
-![License](https://img.shields.io/badge/License-MIT-green)
+<p align="center">
+  A lightweight native Mac menu bar app for keeping Homebrew packages up to date.
+</p>
 
-## Download
+<p align="center">
+  Free · MIT licensed · No telemetry · macOS 14+
+</p>
 
-**[Download TopOff v1.8](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.8.dmg)** (macOS 14+)
+<p align="center">
+  <a href="https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v1.8.dmg">Download TopOff for macOS</a>
+</p>
 
-Or view all releases [here](https://github.com/ihazgithub/TopOff/releases).
-
-## Why TopOff?
-
-If you use Homebrew, you've probably forgotten to run `brew update && brew upgrade` for weeks at a time. Packages get stale, security patches wait, and when you finally remember, you're stuck watching terminal output scroll.
-
-TopOff fixes this — it checks in the background and shows you at a glance when your system needs a refill. One click and you're up to date.
+If you use Homebrew, you have probably forgotten to run `brew update && brew upgrade` for weeks at a time. TopOff checks quietly in the background, shows outdated packages from the menu bar, and lets you update with one click.
 
 ## Features
 
