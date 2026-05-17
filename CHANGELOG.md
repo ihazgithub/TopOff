@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.8.1 — May 2026
+
+### Improvements
+
+- **Clearer update progress** — Update All now shows which Homebrew items are queued and which item is currently updating or being repaired
+- **More self-sufficient Greedy updates** — Interrupted cask upgrades are now repaired automatically instead of being shown repeatedly as normal updates
+
+### Fixes
+
+- **Fixed stuck Greedy cask updates** — TopOff now recovers from stale Homebrew `.upgrading` cask folders that could cause apps like DuckDuckGo or Google Chrome to appear again on every update attempt
+- **More reliable update history** — Update history now only records packages after TopOff verifies that Homebrew no longer reports them as outdated
+
+---
+
 ## v1.8 — May 2026
 
 ### Improvements

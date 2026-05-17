@@ -49,6 +49,7 @@ final class MenuBarViewModel: ObservableObject {
     @Published var lastCleanupResult: CleanupResult?
     @Published private(set) var isRunning = false
     @Published var statusMessage: String?
+    @Published private(set) var updateProgress: UpdateProgressSnapshot?
     @Published var outdatedPackages: [OutdatedPackage] = []
     @Published var skippedPackages: Set<String> = []
     @Published var checkInterval: TimeInterval {
@@ -107,6 +108,7 @@ final class MenuBarViewModel: ObservableObject {
         self.greedyModeEnabled = UserDefaults.standard.bool(forKey: "greedyModeEnabled")
         spinnerFrames = Self.generateSpinnerFrames()
         loadUpdateHistory()
+        UserDefaults.standard.removeObject(forKey: "packagesNeedingAttention")
         notificationManager.requestPermission()
 
         // Start network monitor to handle connectivity restoration
@@ -136,25 +138,34 @@ final class MenuBarViewModel: ObservableObject {
 
         Task {
             isRunning = true
-            iconState = .updating
-            statusMessage = "Updating packages..."
+            iconState = .checking
+            statusMessage = "Checking for updates..."
+            var packagesToUpdate: [OutdatedPackage] = []
 
             do {
-                let result = try await brewService.updateAll(greedy: greedy) { [weak self] line in
-                    if line.contains("==> Upgrading") {
-                        let name = line.replacingOccurrences(of: "==> Upgrading ", with: "")
-                            .components(separatedBy: " ").first ?? ""
-                        if !name.isEmpty {
-                            Task { @MainActor in
-                                self?.statusMessage = "Updating \(name)..."
-                            }
-                        }
-                    }
+                let shouldCheckGreedy = greedy || greedyModeEnabled
+                let refreshedOutdatedPackages = try await brewService.checkOutdated(greedy: shouldCheckGreedy)
+                outdatedPackages = refreshedOutdatedPackages
+
+                packagesToUpdate = updateCandidatePackages()
+                guard !packagesToUpdate.isEmpty else {
+                    statusMessage = "No updates to run"
+                    updateIconState()
+                    isRunning = false
+                    return
                 }
-                lastUpdateResult = result
-                addToHistory(result)
-                outdatedPackages = []
-                skippedPackages = []
+
+                iconState = .updating
+                beginUpdateProgress(for: packagesToUpdate)
+                statusMessage = updateProgress?.title ?? "Updating packages..."
+
+                let result = try await performUpdates(
+                    packagesToUpdate,
+                    greedy: greedy,
+                    useAdmin: false
+                )
+                finishUpdateProgress()
+                let completedResult = try await finalizeUpdateResult(result, greedy: greedy)
 
                 // Run cleanup if auto cleanup is enabled
                 if autoCleanupEnabled {
@@ -162,59 +173,63 @@ final class MenuBarViewModel: ObservableObject {
                     lastCleanupResult = try? await brewService.cleanup()
                 }
 
-                statusMessage = nil
-                await showSuccessAnimation()
+                let remainingCount = visibleOutdatedPackages.count
+                if remainingCount == 0 {
+                    statusMessage = nil
+                    await showSuccessAnimation()
+                } else {
+                    statusMessage = "\(remainingCount) item\(remainingCount == 1 ? "" : "s") still need updates"
+                    updateIconState()
+                }
 
-                var message = result.isEmpty
-                    ? "Everything is up to date!"
-                    : "\(result.count) package\(result.count == 1 ? "" : "s") upgraded"
+                var message = completionMessage(for: completedResult, remainingCount: remainingCount)
                 if let cleanup = lastCleanupResult, !cleanup.freedSpace.isEmpty {
                     message += ". Freed \(cleanup.freedSpace)"
                 }
                 notificationManager.showCompletionNotification(success: true, message: message)
+                updateProgress = nil
             } catch {
                 let errorOutput = extractErrorOutput(from: error)
                 if brewService.isPermissionError(errorOutput) && promptForAdminRetry(packageName: nil) {
                     do {
                         statusMessage = "Retrying with admin privileges..."
-                        let result = try await brewService.updateAllWithAdmin(greedy: greedy) { [weak self] line in
-                            if line.contains("==> Upgrading") {
-                                let name = line.replacingOccurrences(of: "==> Upgrading ", with: "")
-                                    .components(separatedBy: " ").first ?? ""
-                                if !name.isEmpty {
-                                    Task { @MainActor in
-                                        self?.statusMessage = "Updating \(name)..."
-                                    }
-                                }
-                            }
-                        }
-                        lastUpdateResult = result
-                        addToHistory(result)
-                        outdatedPackages = []
-                        skippedPackages = []
+                        let result = try await performUpdates(
+                            packagesToUpdate,
+                            greedy: greedy,
+                            useAdmin: true
+                        )
+                        finishUpdateProgress()
+                        let completedResult = try await finalizeUpdateResult(result, greedy: greedy)
 
                         if autoCleanupEnabled {
                             statusMessage = "Cleaning up..."
                             lastCleanupResult = try? await brewService.cleanup()
                         }
 
-                        statusMessage = nil
-                        await showSuccessAnimation()
+                        let remainingCount = visibleOutdatedPackages.count
+                        if remainingCount == 0 {
+                            statusMessage = nil
+                            await showSuccessAnimation()
+                        } else {
+                            statusMessage = "\(remainingCount) item\(remainingCount == 1 ? "" : "s") still need updates"
+                            updateIconState()
+                        }
 
-                        var message = result.isEmpty
-                            ? "Everything is up to date!"
-                            : "\(result.count) package\(result.count == 1 ? "" : "s") upgraded"
+                        var message = completionMessage(for: completedResult, remainingCount: remainingCount)
                         if let cleanup = lastCleanupResult, !cleanup.freedSpace.isEmpty {
                             message += ". Freed \(cleanup.freedSpace)"
                         }
                         notificationManager.showCompletionNotification(success: true, message: message)
+                        updateProgress = nil
                     } catch {
                         statusMessage = nil
+                        updateProgress = nil
                         iconState = outdatedPackages.isEmpty ? .upToDate : .updatesAvailable
                         notificationManager.showCompletionNotification(success: false, message: error.localizedDescription)
                     }
                 } else {
                     statusMessage = nil
+                    updateProgress = nil
                     iconState = outdatedPackages.isEmpty ? .upToDate : .updatesAvailable
                     notificationManager.showCompletionNotification(success: false, message: error.localizedDescription)
                 }
@@ -349,7 +364,8 @@ final class MenuBarViewModel: ObservableObject {
 
         var success = false
         do {
-            outdatedPackages = try await brewService.checkOutdated(greedy: greedyModeEnabled)
+            let refreshedOutdatedPackages = try await brewService.checkOutdated(greedy: greedyModeEnabled)
+            outdatedPackages = refreshedOutdatedPackages
             skippedPackages = []
             updateIconState()
             success = true
@@ -406,6 +422,175 @@ final class MenuBarViewModel: ObservableObject {
         } else {
             iconState = .updatesAvailable
         }
+    }
+
+    private func beginUpdateProgress(for packages: [OutdatedPackage]) {
+        let items = packages.map {
+            UpdateProgressItem(
+                name: $0.name,
+                currentVersion: $0.currentVersion,
+                latestVersion: $0.latestVersion,
+                state: .queued
+            )
+        }
+        updateProgress = items.isEmpty ? nil : UpdateProgressSnapshot(items: items)
+    }
+
+    private func updateCandidatePackages() -> [OutdatedPackage] {
+        Self.uniquePackages(visibleOutdatedPackages)
+    }
+
+    nonisolated static func uniquePackages(_ source: [OutdatedPackage]) -> [OutdatedPackage] {
+        var packages: [OutdatedPackage] = []
+        var names = Set<String>()
+
+        for package in source where !names.contains(package.name) {
+            packages.append(package)
+            names.insert(package.name)
+        }
+
+        return packages
+    }
+
+    private func performUpdates(
+        _ packages: [OutdatedPackage],
+        greedy: Bool,
+        useAdmin: Bool
+    ) async throws -> UpdateResult {
+        let regularPackages = packages.filter { !$0.hasInterruptedCaskUpgrade }
+        let repairPackages = packages.filter(\.hasInterruptedCaskUpgrade)
+        var completedPackages: [UpgradedPackage] = []
+        var capturedNames = Set<String>()
+
+        func append(_ result: UpdateResult) {
+            for package in result.packages where !capturedNames.contains(package.name) {
+                capturedNames.insert(package.name)
+                completedPackages.append(package)
+            }
+        }
+
+        let progressHandler: @Sendable (String) -> Void = { [weak self] line in
+            Task { @MainActor in
+                self?.handleProgressLine(line)
+            }
+        }
+
+        if !regularPackages.isEmpty {
+            let result: UpdateResult
+            if useAdmin {
+                result = try await brewService.updateAllWithAdmin(
+                    greedy: greedy,
+                    packageNames: regularPackages.map(\.name),
+                    onProgress: progressHandler
+                )
+            } else {
+                result = try await brewService.updateAll(
+                    greedy: greedy,
+                    packageNames: regularPackages.map(\.name),
+                    onProgress: progressHandler
+                )
+            }
+            append(result)
+        }
+
+        if !repairPackages.isEmpty {
+            let result = try await brewService.repairInterruptedCaskUpgrades(
+                repairPackages,
+                useAdmin: useAdmin,
+                onProgress: progressHandler
+            )
+            append(result)
+        }
+
+        return UpdateResult(packages: completedPackages, timestamp: Date())
+    }
+
+    private func handleProgressLine(_ line: String) {
+        if let name = BrewService.repairingPackageName(from: line) {
+            markPackage(named: name, state: .repairing)
+        } else if let name = BrewService.upgradingPackageName(from: line) {
+            markPackage(named: name, state: .updating)
+        }
+    }
+
+    private func markPackage(named name: String, state: UpdateProgressItem.State) {
+        var items = updateProgress?.items ?? []
+        if let currentIndex = items.firstIndex(where: { $0.state == .updating || $0.state == .repairing }) {
+            items[currentIndex].state = .attempted
+        }
+
+        if let index = items.firstIndex(where: { $0.name == name }) {
+            items[index].state = state
+        } else {
+            items.append(UpdateProgressItem(
+                name: name,
+                currentVersion: "?",
+                latestVersion: "?",
+                state: state
+            ))
+        }
+
+        updateProgress = UpdateProgressSnapshot(items: items)
+        statusMessage = updateProgress?.title
+    }
+
+    private func finishUpdateProgress() {
+        guard var items = updateProgress?.items else { return }
+
+        for index in items.indices where items[index].state == .updating || items[index].state == .repairing {
+            items[index].state = .attempted
+        }
+
+        updateProgress = UpdateProgressSnapshot(items: items)
+    }
+
+    private func finalizeUpdateResult(_ result: UpdateResult, greedy: Bool) async throws -> UpdateResult {
+        statusMessage = "Verifying updates..."
+        let refreshedOutdatedPackages = try await brewService.checkOutdated(greedy: greedy || greedyModeEnabled)
+        markVerifiedProgress(result: result, stillOutdated: refreshedOutdatedPackages)
+        let observedResult = result.supplemented(with: updateProgress?.items ?? [])
+        let completedResult = observedResult.excludingPackagesStillOutdated(refreshedOutdatedPackages)
+
+        if !completedResult.isEmpty {
+            lastUpdateResult = completedResult
+            addToHistory(completedResult)
+        }
+        outdatedPackages = refreshedOutdatedPackages
+        skippedPackages = []
+
+        return completedResult
+    }
+
+    private func markVerifiedProgress(result: UpdateResult, stillOutdated: [OutdatedPackage]) {
+        guard var items = updateProgress?.items else { return }
+
+        let parsedCompletedNames = Set(result.packages.map(\.name))
+        let stillOutdatedNames = Set(stillOutdated.map(\.name))
+
+        for index in items.indices {
+            if stillOutdatedNames.contains(items[index].name) {
+                items[index].state = .attempted
+            } else if parsedCompletedNames.contains(items[index].name) || items[index].state == .attempted {
+                items[index].state = .finished
+            }
+        }
+
+        updateProgress = UpdateProgressSnapshot(items: items)
+    }
+
+    private func completionMessage(for result: UpdateResult, remainingCount: Int) -> String {
+        if result.isEmpty {
+            if remainingCount > 0 {
+                return "No packages completed. \(remainingCount) item\(remainingCount == 1 ? "" : "s") still need updates."
+            }
+            return "Everything is up to date!"
+        }
+
+        var message = "\(result.count) package\(result.count == 1 ? "" : "s") upgraded"
+        if remainingCount > 0 {
+            message += ". \(remainingCount) item\(remainingCount == 1 ? "" : "s") still need updates."
+        }
+        return message
     }
 
     func startPeriodicChecks() {
@@ -540,6 +725,8 @@ final class MenuBarViewModel: ObservableObject {
         if let data = UserDefaults.standard.data(forKey: "updateHistory"),
            let decoded = try? JSONDecoder().decode([UpdateResult].self, from: data) {
             updateHistory = decoded
+            lastUpdateResult = decoded.first
         }
     }
+
 }

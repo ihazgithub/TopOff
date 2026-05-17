@@ -8,7 +8,21 @@ struct TopOffApp: App {
     var body: some Scene {
         MenuBarExtra {
             // Active status line
-            if let status = viewModel.statusMessage {
+            if let progress = viewModel.updateProgress {
+                Menu(progress.title) {
+                    ForEach(progress.items) { item in
+                        Text(progressLabel(for: item))
+                            .font(.system(.body, design: .monospaced))
+                    }
+                }
+                .help("Shows which Homebrew items are queued and which one is updating now.")
+
+                if let status = viewModel.statusMessage, status != progress.title {
+                    Text(status)
+                        .foregroundStyle(.secondary)
+                }
+                Divider()
+            } else if let status = viewModel.statusMessage {
                 Text(status)
                     .foregroundStyle(.secondary)
                 Divider()
@@ -151,5 +165,23 @@ struct TopOffApp: App {
         }
         .windowResizability(.contentSize)
         .defaultPosition(.center)
+    }
+
+    private func progressLabel(for item: UpdateProgressItem) -> String {
+        let marker: String
+        switch item.state {
+        case .queued:
+            marker = "○"
+        case .updating:
+            marker = "●"
+        case .repairing:
+            marker = "*"
+        case .attempted:
+            marker = "…"
+        case .finished:
+            marker = "✓"
+        }
+
+        return "\(marker) \(item.name) \(item.currentVersion) → \(item.latestVersion)"
     }
 }

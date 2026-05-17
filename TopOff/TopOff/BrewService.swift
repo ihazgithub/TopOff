@@ -17,8 +17,10 @@ enum BrewError: Error, LocalizedError {
     }
 }
 
-struct OutdatedPackage: Identifiable {
-    let id = UUID()
+struct OutdatedPackage: Identifiable, Codable, Equatable {
+    var id: String { name }
+    var hasInterruptedCaskUpgrade: Bool { currentVersion.contains(".upgrading") }
+
     let name: String
     let currentVersion: String
     let latestVersion: String
@@ -44,6 +46,67 @@ struct UpdateResult: Codable {
 
     var isEmpty: Bool { packages.isEmpty }
     var count: Int { packages.count }
+
+    func supplemented(with progressItems: [UpdateProgressItem]) -> UpdateResult {
+        var packages = packages
+        var capturedNames = Set(packages.map(\.name))
+
+        for item in progressItems where item.state == .finished && !capturedNames.contains(item.name) {
+            capturedNames.insert(item.name)
+            packages.append(UpgradedPackage(
+                name: item.name,
+                oldVersion: item.currentVersion,
+                newVersion: item.latestVersion
+            ))
+        }
+
+        return UpdateResult(packages: packages, timestamp: timestamp)
+    }
+
+    func excludingPackagesStillOutdated(_ outdatedPackages: [OutdatedPackage]) -> UpdateResult {
+        let outdatedNames = Set(outdatedPackages.map(\.name))
+        return UpdateResult(
+            packages: packages.filter { !outdatedNames.contains($0.name) },
+            timestamp: timestamp
+        )
+    }
+}
+
+struct UpdateProgressItem: Identifiable, Equatable {
+    enum State {
+        case queued
+        case updating
+        case repairing
+        case attempted
+        case finished
+    }
+
+    let id = UUID()
+    let name: String
+    let currentVersion: String
+    let latestVersion: String
+    var state: State
+}
+
+struct UpdateProgressSnapshot {
+    let items: [UpdateProgressItem]
+
+    var count: Int { items.count }
+    var currentItem: UpdateProgressItem? {
+        items.first { $0.state == .updating || $0.state == .repairing }
+    }
+
+    var title: String {
+        guard !items.isEmpty else { return "Updating..." }
+
+        if let currentItem {
+            let index = (items.firstIndex { $0.name == currentItem.name } ?? 0) + 1
+            let verb = currentItem.state == .repairing ? "Repairing" : "Updating"
+            return "\(verb) \(index) of \(items.count): \(currentItem.name)"
+        }
+
+        return "Updating \(items.count) item\(items.count == 1 ? "" : "s")..."
+    }
 }
 
 struct CleanupResult {
@@ -89,10 +152,14 @@ final class BrewService {
             outdatedArgs.append("--greedy")
         }
         let output = try await runCommand(brewPath, arguments: outdatedArgs)
-        return parseOutdatedVerbose(output)
+        return Self.parseOutdatedVerbose(output)
     }
 
-    func updateAll(greedy: Bool = false, onProgress: (@Sendable (String) -> Void)? = nil) async throws -> UpdateResult {
+    func updateAll(
+        greedy: Bool = false,
+        packageNames: [String]? = nil,
+        onProgress: (@Sendable (String) -> Void)? = nil
+    ) async throws -> UpdateResult {
         guard let brewPath = brewPath else {
             throw BrewError.brewNotFound
         }
@@ -100,9 +167,13 @@ final class BrewService {
         // Run brew update
         _ = try await runCommand(brewPath, arguments: ["update"])
 
+        if let packageNames, packageNames.isEmpty {
+            return UpdateResult(packages: [], timestamp: Date())
+        }
+
         // Run regular upgrades first, then include greedy casks when requested.
         var upgradeOutputs: [String] = []
-        for upgradeArgs in Self.upgradeArgumentBatches(greedy: greedy) {
+        for upgradeArgs in Self.upgradeArgumentBatches(greedy: greedy, packageNames: packageNames) {
             let output: String
             if let onProgress {
                 output = try await runCommandStreaming(brewPath, arguments: upgradeArgs, onLine: onProgress)
@@ -117,15 +188,16 @@ final class BrewService {
         return UpdateResult(packages: packages, timestamp: Date())
     }
 
-    static func upgradeArgumentBatches(greedy: Bool) -> [[String]] {
+    static func upgradeArgumentBatches(greedy: Bool, packageNames: [String]? = nil) -> [[String]] {
+        let names = packageNames ?? []
         if greedy {
             return [
-                ["upgrade"],
-                ["upgrade", "--greedy"]
+                ["upgrade"] + names,
+                ["upgrade", "--greedy"] + names
             ]
         }
 
-        return [["upgrade"]]
+        return [["upgrade"] + names]
     }
 
     static func parseUpgradeOutput(_ output: String) -> [UpgradedPackage] {
@@ -208,6 +280,30 @@ final class BrewService {
         return packages
     }
 
+    nonisolated static func upgradingPackageName(from line: String) -> String? {
+        let trimmedLine = line.trimmingCharacters(in: .whitespaces)
+        guard trimmedLine.hasPrefix("==> Upgrading ") else { return nil }
+
+        let afterPrefix = trimmedLine.replacingOccurrences(of: "==> Upgrading ", with: "")
+            .trimmingCharacters(in: .whitespaces)
+
+        if afterPrefix.contains("outdated package") { return nil }
+
+        return afterPrefix.components(separatedBy: .whitespaces).first
+            .flatMap { $0.isEmpty ? nil : $0 }
+    }
+
+    nonisolated static func repairingPackageName(from line: String) -> String? {
+        let trimmedLine = line.trimmingCharacters(in: .whitespaces)
+        guard trimmedLine.hasPrefix("==> Repairing ") else { return nil }
+
+        let afterPrefix = trimmedLine.replacingOccurrences(of: "==> Repairing ", with: "")
+            .trimmingCharacters(in: .whitespaces)
+
+        return afterPrefix.components(separatedBy: .whitespaces).first
+            .flatMap { $0.isEmpty ? nil : $0 }
+    }
+
     private static func parseGreedyCaskSummaryLine(_ line: String) -> UpgradedPackage? {
         guard !line.isEmpty else { return nil }
 
@@ -224,18 +320,28 @@ final class BrewService {
         )
     }
 
-    private func parseOutdatedVerbose(_ output: String) -> [OutdatedPackage] {
+    nonisolated static func parseOutdatedVerbose(_ output: String) -> [OutdatedPackage] {
         // brew outdated --verbose outputs lines like:
         // node (20.1.0) < 22.0.0
         // python@3.12 (3.11.4) < 3.12.1
+        // google-chrome (146.0.7680.80) != 148.0.7778.168
         var packages: [OutdatedPackage] = []
         let lines = output.components(separatedBy: .newlines)
 
         for line in lines {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
-            guard !trimmed.isEmpty, trimmed.contains(" < ") else { continue }
+            guard !trimmed.isEmpty else { continue }
 
-            let parts = trimmed.components(separatedBy: " < ")
+            let separator: String
+            if trimmed.contains(" < ") {
+                separator = " < "
+            } else if trimmed.contains(" != ") {
+                separator = " != "
+            } else {
+                continue
+            }
+
+            let parts = trimmed.components(separatedBy: separator)
             guard parts.count == 2 else { continue }
 
             let latestVersion = parts[1].trimmingCharacters(in: .whitespaces)
@@ -265,6 +371,138 @@ final class BrewService {
         let upgradeOutput = try await runCommand(brewPath, arguments: ["upgrade", name])
         let packages = Self.parseUpgradeOutput(upgradeOutput)
         return UpdateResult(packages: packages, timestamp: Date())
+    }
+
+    func repairInterruptedCaskUpgrades(
+        _ packages: [OutdatedPackage],
+        useAdmin: Bool = false,
+        onProgress: (@Sendable (String) -> Void)? = nil
+    ) async throws -> UpdateResult {
+        guard let brewPath = brewPath else {
+            throw BrewError.brewNotFound
+        }
+
+        let interruptedPackages = packages.filter(\.hasInterruptedCaskUpgrade)
+        guard !interruptedPackages.isEmpty else {
+            return UpdateResult(packages: [], timestamp: Date())
+        }
+
+        let prefix = try await runCommand(brewPath, arguments: ["--prefix"])
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        var repairedPackages: [UpgradedPackage] = []
+        for package in interruptedPackages {
+            onProgress?("==> Repairing \(package.name)")
+            _ = try Self.moveStaleCaskUpgradeBackups(
+                packageName: package.name,
+                homebrewPrefix: prefix
+            )
+
+            do {
+                _ = try await runCommandStreamingIfNeeded(
+                    brewPath,
+                    arguments: ["install", "--cask", "--adopt", package.name],
+                    useAdmin: useAdmin,
+                    onProgress: onProgress
+                )
+            } catch {
+                _ = try await runCommandStreamingIfNeeded(
+                    brewPath,
+                    arguments: ["install", "--cask", "--force", package.name],
+                    useAdmin: useAdmin,
+                    onProgress: onProgress
+                )
+            }
+
+            repairedPackages.append(UpgradedPackage(
+                name: package.name,
+                oldVersion: package.currentVersion.replacingOccurrences(of: ".upgrading", with: ""),
+                newVersion: package.latestVersion
+            ))
+        }
+
+        return UpdateResult(packages: repairedPackages, timestamp: Date())
+    }
+
+    nonisolated static func staleCaskUpgradeBackupPaths(
+        packageName: String,
+        homebrewPrefix: String,
+        fileManager: FileManager = .default
+    ) throws -> [URL] {
+        let caskroomURL = URL(fileURLWithPath: homebrewPrefix)
+            .appendingPathComponent("Caskroom")
+            .appendingPathComponent(packageName)
+        let metadataURL = caskroomURL.appendingPathComponent(".metadata")
+        var urls: [URL] = []
+
+        if let versionURLs = try? fileManager.contentsOfDirectory(
+            at: caskroomURL,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        ) {
+            urls.append(contentsOf: versionURLs.filter { $0.lastPathComponent.hasSuffix(".upgrading") })
+        }
+
+        if let metadataURLs = try? fileManager.contentsOfDirectory(
+            at: metadataURL,
+            includingPropertiesForKeys: [.isDirectoryKey]
+        ) {
+            urls.append(contentsOf: metadataURLs.filter { $0.lastPathComponent.hasSuffix(".upgrading") })
+        }
+
+        return urls
+    }
+
+    @discardableResult
+    nonisolated static func moveStaleCaskUpgradeBackups(
+        packageName: String,
+        homebrewPrefix: String,
+        recoveryRoot: URL = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Caches/TopOff/CaskRecovery"),
+        fileManager: FileManager = .default
+    ) throws -> [URL] {
+        let paths = try staleCaskUpgradeBackupPaths(
+            packageName: packageName,
+            homebrewPrefix: homebrewPrefix,
+            fileManager: fileManager
+        )
+        guard !paths.isEmpty else { return [] }
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        let recoveryURL = recoveryRoot
+            .appendingPathComponent("\(formatter.string(from: Date()))-\(sanitizedPackageName(packageName))")
+        try fileManager.createDirectory(at: recoveryURL, withIntermediateDirectories: true)
+
+        var movedURLs: [URL] = []
+        for path in paths {
+            let destinationName: String
+            if path.deletingLastPathComponent().lastPathComponent == ".metadata" {
+                destinationName = "metadata-\(path.lastPathComponent)"
+            } else {
+                destinationName = path.lastPathComponent
+            }
+
+            var destination = recoveryURL.appendingPathComponent(destinationName)
+            var suffix = 1
+            while fileManager.fileExists(atPath: destination.path) {
+                suffix += 1
+                destination = recoveryURL.appendingPathComponent("\(destinationName)-\(suffix)")
+            }
+
+            try fileManager.moveItem(at: path, to: destination)
+            movedURLs.append(destination)
+        }
+
+        return movedURLs
+    }
+
+    nonisolated private static func sanitizedPackageName(_ packageName: String) -> String {
+        let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-_"))
+        let scalars = packageName.unicodeScalars.map { scalar in
+            allowed.contains(scalar) ? Character(scalar) : "-"
+        }
+        return String(scalars)
     }
 
     func cleanup() async throws -> CleanupResult {
@@ -387,6 +625,23 @@ final class BrewService {
         }
     }
 
+    private func runCommandStreamingIfNeeded(
+        _ command: String,
+        arguments: [String],
+        useAdmin: Bool = false,
+        onProgress: (@Sendable (String) -> Void)? = nil
+    ) async throws -> String {
+        if useAdmin {
+            return try await runCommandWithAdmin(command, arguments: arguments, onLine: onProgress)
+        }
+
+        if let onProgress {
+            return try await runCommandStreaming(command, arguments: arguments, onLine: onProgress)
+        }
+
+        return try await runCommand(command, arguments: arguments)
+    }
+
     // MARK: - Permission Error Detection
 
     func isPermissionError(_ output: String) -> Bool {
@@ -481,13 +736,21 @@ final class BrewService {
         }
     }
 
-    func updateAllWithAdmin(greedy: Bool = false, onProgress: (@Sendable (String) -> Void)? = nil) async throws -> UpdateResult {
+    func updateAllWithAdmin(
+        greedy: Bool = false,
+        packageNames: [String]? = nil,
+        onProgress: (@Sendable (String) -> Void)? = nil
+    ) async throws -> UpdateResult {
         guard let brewPath = brewPath else {
             throw BrewError.brewNotFound
         }
 
+        if let packageNames, packageNames.isEmpty {
+            return UpdateResult(packages: [], timestamp: Date())
+        }
+
         var upgradeOutputs: [String] = []
-        for upgradeArgs in Self.upgradeArgumentBatches(greedy: greedy) {
+        for upgradeArgs in Self.upgradeArgumentBatches(greedy: greedy, packageNames: packageNames) {
             let output = try await runCommandWithAdmin(
                 brewPath,
                 arguments: upgradeArgs,
