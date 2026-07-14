@@ -157,6 +157,30 @@ final class BrewServiceTests: XCTestCase {
         XCTAssertFalse(packages.contains { $0.newVersion == "?" }, "no '?' duplicate entries")
     }
 
+    func testCasksNeedingReinstallExtractsRefusedCaskNames() {
+        // Homebrew refuses to upgrade some auto_updates casks in place and
+        // recommends a forced reinstall instead.
+        let output = """
+        ==> Upgrading lame
+        Warning: The cask 'google-chrome' cannot be upgraded as-is. To fix this, run:
+        brew reinstall --cask --force google-chrome
+        Warning: The cask 'duckduckgo' cannot be upgraded as-is. To fix this, run:
+        brew reinstall --cask --force duckduckgo
+        """
+
+        XCTAssertEqual(BrewService.casksNeedingReinstall(from: output), ["google-chrome", "duckduckgo"])
+    }
+
+    func testCasksNeedingReinstallIgnoresNormalUpgradeOutput() {
+        let output = """
+        ==> Upgrading 1 outdated package:
+        lame 3.100 -> 3.101
+        🍺  /opt/homebrew/Cellar/lame/3.101: 27 files, 3.2MB
+        """
+
+        XCTAssertTrue(BrewService.casksNeedingReinstall(from: output).isEmpty)
+    }
+
     func testUpgradingPackageNameIgnoresSummaryLines() {
         XCTAssertNil(BrewService.upgradingPackageName(from: "==> Upgrading 3 outdated packages:"))
         XCTAssertEqual(

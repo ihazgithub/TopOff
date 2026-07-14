@@ -305,7 +305,7 @@ final class MenuBarViewModel: ObservableObject {
             statusMessage = "Updating \(package.name)..."
 
             do {
-                let result = try await brewService.upgradePackage(package.name)
+                let result = try await brewService.upgradePackage(package)
 
                 // Remove from outdated list
                 outdatedPackages.removeAll { $0.name == package.name }
@@ -338,7 +338,7 @@ final class MenuBarViewModel: ObservableObject {
                 if case .permissionDenied = classified {
                     do {
                         statusMessage = "Retrying \(package.name) with admin privileges..."
-                        let result = try await brewService.upgradePackageWithAdmin(package.name)
+                        let result = try await brewService.upgradePackageWithAdmin(package)
 
                         outdatedPackages.removeAll { $0.name == package.name }
                         skippedPackages.remove(package.name)
@@ -590,13 +590,13 @@ final class MenuBarViewModel: ObservableObject {
             if useAdmin {
                 result = try await brewService.updateAllWithAdmin(
                     greedy: greedy,
-                    packageNames: regularPackages.map(\.name),
+                    packages: regularPackages,
                     onProgress: progressHandler
                 )
             } else {
                 result = try await brewService.updateAll(
                     greedy: greedy,
-                    packageNames: regularPackages.map(\.name),
+                    packages: regularPackages,
                     onProgress: progressHandler
                 )
             }

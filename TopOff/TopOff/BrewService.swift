@@ -274,7 +274,7 @@ final class BrewService: @unchecked Sendable {
 
     func updateAll(
         greedy: Bool = false,
-        packageNames: [String]? = nil,
+        packages: [OutdatedPackage],
         onProgress: (@Sendable (String) -> Void)? = nil
     ) async throws -> UpdateResult {
         guard let brewPath = brewPath else {
@@ -284,13 +284,14 @@ final class BrewService: @unchecked Sendable {
         // Run brew update
         _ = try await runCommand(brewPath, arguments: ["update"])
 
-        if let packageNames, packageNames.isEmpty {
+        guard !packages.isEmpty else {
             return UpdateResult(packages: [], timestamp: Date())
         }
 
         // Run regular upgrades first, then include greedy casks when requested.
+        let names = packages.map(\.name)
         var upgradeOutputs: [String] = []
-        for upgradeArgs in Self.upgradeArgumentBatches(greedy: greedy, packageNames: packageNames) {
+        for upgradeArgs in Self.upgradeArgumentBatches(greedy: greedy, packageNames: names) {
             let output: String
             if let onProgress {
                 output = try await runCommandStreaming(brewPath, arguments: upgradeArgs, onLine: onProgress)
@@ -300,9 +301,41 @@ final class BrewService: @unchecked Sendable {
             upgradeOutputs.append(output)
         }
 
-        // Parse the upgrade output to find upgraded packages
-        let packages = Self.parseUpgradeOutput(upgradeOutputs.joined(separator: "\n"))
-        return UpdateResult(packages: packages, timestamp: Date())
+        let combined = upgradeOutputs.joined(separator: "\n")
+        let upgraded = Self.parseUpgradeOutput(combined)
+        return UpdateResult(
+            packages: try await appendingReinstalledRefusedCasks(
+                to: upgraded,
+                output: combined,
+                candidates: packages,
+                useAdmin: false,
+                onProgress: onProgress
+            ),
+            timestamp: Date()
+        )
+    }
+
+    /// Homebrew refuses to `brew upgrade` some casks in place — typically
+    /// `auto_updates` apps that updated themselves, leaving the on-disk app out
+    /// of sync with Homebrew's records — printing:
+    ///   Warning: The cask 'NAME' cannot be upgraded as-is. To fix this, run:
+    ///   brew reinstall --cask --force NAME
+    /// Returns the distinct cask names that need a forced reinstall instead.
+    nonisolated static func casksNeedingReinstall(from output: String) -> [String] {
+        var names: [String] = []
+        var seen = Set<String>()
+        for line in output.components(separatedBy: .newlines) {
+            guard line.contains("cannot be upgraded as-is"),
+                  let open = line.range(of: "The cask '"),
+                  let close = line.range(of: "'", range: open.upperBound..<line.endIndex) else {
+                continue
+            }
+            let name = String(line[open.upperBound..<close.lowerBound])
+            if !name.isEmpty && seen.insert(name).inserted {
+                names.append(name)
+            }
+        }
+        return names
     }
 
     static func upgradeArgumentBatches(greedy: Bool, packageNames: [String]? = nil) -> [[String]] {
@@ -491,7 +524,7 @@ final class BrewService: @unchecked Sendable {
         return packages
     }
 
-    func upgradePackage(_ name: String) async throws -> UpdateResult {
+    func upgradePackage(_ package: OutdatedPackage) async throws -> UpdateResult {
         guard let brewPath = brewPath else {
             throw BrewError.brewNotFound
         }
@@ -503,9 +536,18 @@ final class BrewService: @unchecked Sendable {
         // Update is an explicit user intent to upgrade *this* thing, so
         // honor that even when TopOff's global Greedy mode is off. For
         // formulae and non-auto_updates casks `--greedy` is a no-op.
-        let upgradeOutput = try await runCommand(brewPath, arguments: ["upgrade", "--greedy", name])
-        let packages = Self.parseUpgradeOutput(upgradeOutput)
-        return UpdateResult(packages: packages, timestamp: Date())
+        let upgradeOutput = try await runCommand(brewPath, arguments: ["upgrade", "--greedy", package.name])
+        let upgraded = Self.parseUpgradeOutput(upgradeOutput)
+        return UpdateResult(
+            packages: try await appendingReinstalledRefusedCasks(
+                to: upgraded,
+                output: upgradeOutput,
+                candidates: [package],
+                useAdmin: false,
+                onProgress: nil
+            ),
+            timestamp: Date()
+        )
     }
 
     func repairInterruptedCaskUpgrades(
@@ -557,6 +599,64 @@ final class BrewService: @unchecked Sendable {
         }
 
         return UpdateResult(packages: repairedPackages, timestamp: Date())
+    }
+
+    /// Force-reinstalls casks Homebrew won't upgrade in place (see
+    /// `casksNeedingReinstall`). Runs `brew reinstall --cask --force <name>`
+    /// for each and reports the version change from the outdated metadata.
+    func reinstallCasks(
+        _ packages: [OutdatedPackage],
+        useAdmin: Bool = false,
+        onProgress: (@Sendable (String) -> Void)? = nil
+    ) async throws -> UpdateResult {
+        guard let brewPath = brewPath else {
+            throw BrewError.brewNotFound
+        }
+        guard !packages.isEmpty else {
+            return UpdateResult(packages: [], timestamp: Date())
+        }
+
+        var reinstalled: [UpgradedPackage] = []
+        for package in packages {
+            // Emit an Upgrading line so the progress UI tracks the reinstall.
+            onProgress?("==> Upgrading \(package.name)")
+            _ = try await runCommandStreamingIfNeeded(
+                brewPath,
+                arguments: ["reinstall", "--cask", "--force", package.name],
+                useAdmin: useAdmin,
+                onProgress: onProgress
+            )
+            reinstalled.append(UpgradedPackage(
+                name: package.name,
+                oldVersion: package.currentVersion,
+                newVersion: package.latestVersion
+            ))
+        }
+
+        return UpdateResult(packages: reinstalled, timestamp: Date())
+    }
+
+    /// After an upgrade attempt, reinstall any casks Homebrew refused ("cannot
+    /// be upgraded as-is") among `candidates`, appending the results to
+    /// `packages` (deduped by name).
+    private func appendingReinstalledRefusedCasks(
+        to packages: [UpgradedPackage],
+        output: String,
+        candidates: [OutdatedPackage],
+        useAdmin: Bool,
+        onProgress: (@Sendable (String) -> Void)?
+    ) async throws -> [UpgradedPackage] {
+        let refusedNames = Set(Self.casksNeedingReinstall(from: output))
+        let refused = candidates.filter { refusedNames.contains($0.name) }
+        guard !refused.isEmpty else { return packages }
+
+        let reinstalled = try await reinstallCasks(refused, useAdmin: useAdmin, onProgress: onProgress)
+        var result = packages
+        var names = Set(packages.map(\.name))
+        for package in reinstalled.packages where names.insert(package.name).inserted {
+            result.append(package)
+        }
+        return result
     }
 
     nonisolated static func staleCaskUpgradeBackupPaths(
@@ -930,19 +1030,20 @@ final class BrewService: @unchecked Sendable {
 
     func updateAllWithAdmin(
         greedy: Bool = false,
-        packageNames: [String]? = nil,
+        packages: [OutdatedPackage],
         onProgress: (@Sendable (String) -> Void)? = nil
     ) async throws -> UpdateResult {
         guard let brewPath = brewPath else {
             throw BrewError.brewNotFound
         }
 
-        if let packageNames, packageNames.isEmpty {
+        guard !packages.isEmpty else {
             return UpdateResult(packages: [], timestamp: Date())
         }
 
+        let names = packages.map(\.name)
         var upgradeOutputs: [String] = []
-        for upgradeArgs in Self.upgradeArgumentBatches(greedy: greedy, packageNames: packageNames) {
+        for upgradeArgs in Self.upgradeArgumentBatches(greedy: greedy, packageNames: names) {
             let output = try await runCommandWithAdmin(
                 brewPath,
                 arguments: upgradeArgs,
@@ -952,11 +1053,21 @@ final class BrewService: @unchecked Sendable {
             upgradeOutputs.append(output)
         }
 
-        let packages = Self.parseUpgradeOutput(upgradeOutputs.joined(separator: "\n"))
-        return UpdateResult(packages: packages, timestamp: Date())
+        let combined = upgradeOutputs.joined(separator: "\n")
+        let upgraded = Self.parseUpgradeOutput(combined)
+        return UpdateResult(
+            packages: try await appendingReinstalledRefusedCasks(
+                to: upgraded,
+                output: combined,
+                candidates: packages,
+                useAdmin: true,
+                onProgress: onProgress
+            ),
+            timestamp: Date()
+        )
     }
 
-    func upgradePackageWithAdmin(_ name: String) async throws -> UpdateResult {
+    func upgradePackageWithAdmin(_ package: OutdatedPackage) async throws -> UpdateResult {
         guard let brewPath = brewPath else {
             throw BrewError.brewNotFound
         }
@@ -964,11 +1075,20 @@ final class BrewService: @unchecked Sendable {
         // See `upgradePackage` for why `--greedy` is unconditional here.
         let upgradeOutput = try await runCommandWithAdmin(
             brewPath,
-            arguments: ["upgrade", "--greedy", name],
-            packageName: name
+            arguments: ["upgrade", "--greedy", package.name],
+            packageName: package.name
         )
-        let packages = Self.parseUpgradeOutput(upgradeOutput)
-        return UpdateResult(packages: packages, timestamp: Date())
+        let upgraded = Self.parseUpgradeOutput(upgradeOutput)
+        return UpdateResult(
+            packages: try await appendingReinstalledRefusedCasks(
+                to: upgraded,
+                output: upgradeOutput,
+                candidates: [package],
+                useAdmin: true,
+                onProgress: nil
+            ),
+            timestamp: Date()
+        )
     }
 
     // MARK: - Askpass / FIFO
