@@ -1,6 +1,6 @@
 # Changelog
 
-## v2.0.2 — June 2026
+## v2.0.2 — July 2026
 
 ### Fixes
 
