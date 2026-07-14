@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v2.0.1.dmg">Download TopOff for macOS</a>
+  <a href="https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v2.0.2.dmg">Download TopOff for macOS</a>
 </p>
 
 <p align="center">
@@ -58,7 +58,7 @@ The menu bar icon tells you at a glance if updates are available:
 
 ### Download (Recommended)
 
-1. Download the [latest DMG](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v2.0.1.dmg)
+1. Download the [latest DMG](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v2.0.2.dmg)
 2. Open the DMG and drag TopOff to your Applications folder
 3. Launch TopOff. It's signed and notarized by Apple, so it opens immediately on first launch — no trip through Privacy & Security needed.
 

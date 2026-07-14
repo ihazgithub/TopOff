@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.0.2 — June 2026
+
+### Fixes
+
+- **Self-updating apps now finish updating** — Some casks that manage their own updates (for example DuckDuckGo) could sit in the menu as outdated and never clear, no matter how many times you ran Update All. Homebrew refuses to upgrade these in place — even in Greedy mode — and instead needs a forced reinstall, which TopOff wasn't doing. TopOff now detects that case and completes the update with a forced reinstall, from Update All, Update All (Greedy), and the per-package Update.
+
+### Notes
+
+- Supports macOS 14 and later. Universal binary for Apple Silicon and Intel.
+
+---
+
 ## v2.0.1 — June 2026
 
 ### Fixes
