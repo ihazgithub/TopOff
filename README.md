@@ -46,7 +46,7 @@ If you use Homebrew, you have probably forgotten to run `brew update && brew upg
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/topoff-demo-dark.gif">
-  <img src="docs/assets/topoff-demo.gif" alt="TopOff Demo" width="360">
+  <img src="docs/assets/topoff-demo.gif" alt="TopOff Demo" width="252">
 </picture>
 
 The menu bar icon tells you at a glance if updates are available:
