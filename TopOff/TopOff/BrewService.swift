@@ -240,6 +240,16 @@ final class BrewService: @unchecked Sendable {
     }
 
     static func findBrewPath() -> String? {
+        #if DEBUG
+        // Demo/testing hook: lets a debug build talk to a stand-in brew
+        // (see gitignored demo/fakebrew.sh) for marketing captures and
+        // UI testing. Compiled out of Release builds entirely.
+        if let override = ProcessInfo.processInfo.environment["TOPOFF_BREW_PATH"],
+           FileManager.default.fileExists(atPath: override) {
+            return override
+        }
+        #endif
+
         let appleSiliconPath = "/opt/homebrew/bin/brew"
         let intelPath = "/usr/local/bin/brew"
 
@@ -775,44 +785,47 @@ final class BrewService: @unchecked Sendable {
         return CleanupResult(freedSpace: "", timestamp: Date())
     }
 
+    /// Run a command and return its combined stdout/stderr output.
+    ///
+    /// Implemented on top of `runCommandStreaming` (with a no-op line
+    /// callback) so output is drained from the pipe as it is produced.
+    /// Reading only after termination deadlocks once the subprocess emits
+    /// more than the kernel's ~64 KB pipe buffer: the subprocess blocks
+    /// writing to the full pipe and never exits, so the termination
+    /// handler never fires — `brew update` easily exceeds that after a
+    /// few weeks of formula churn.
     nonisolated private func runCommand(
         _ command: String,
         arguments: [String],
         extraEnvironment: [String: String] = [:],
         onProcess: (@Sendable (Process) -> Void)? = nil
     ) async throws -> String {
-        try await withCheckedThrowingContinuation { continuation in
-            let process = Process()
-            let pipe = Pipe()
+        try await runCommandStreaming(
+            command,
+            arguments: arguments,
+            extraEnvironment: extraEnvironment,
+            onProcess: onProcess,
+            onLine: { _ in }
+        )
+    }
 
-            process.executableURL = URL(fileURLWithPath: command)
-            process.arguments = arguments
-            process.standardOutput = pipe
-            process.standardError = pipe
+    /// Lock-guarded byte buffer shared between `readabilityHandler` and
+    /// `terminationHandler`, which fire on different queues. `NSMutableData`
+    /// is not thread-safe, so appends are serialized behind an `NSLock`.
+    private final class OutputBuffer: @unchecked Sendable {
+        private let lock = NSLock()
+        private var data = Data()
 
-            // Set up environment to find brew dependencies
-            var environment = ProcessInfo.processInfo.environment
-            environment["PATH"] = "/opt/homebrew/bin:/usr/local/bin:" + (environment["PATH"] ?? "")
-            environment.merge(extraEnvironment) { _, new in new }
-            process.environment = environment
+        func append(_ chunk: Data) {
+            lock.lock()
+            defer { lock.unlock() }
+            data.append(chunk)
+        }
 
-            process.terminationHandler = { _ in
-                let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                let output = String(data: data, encoding: .utf8) ?? ""
-
-                if process.terminationStatus == 0 {
-                    continuation.resume(returning: output)
-                } else {
-                    continuation.resume(throwing: BrewError.commandFailed(output))
-                }
-            }
-
-            do {
-                try process.run()
-                onProcess?(process)
-            } catch {
-                continuation.resume(throwing: error)
-            }
+        var snapshot: Data {
+            lock.lock()
+            defer { lock.unlock() }
+            return data
         }
     }
 
@@ -826,7 +839,7 @@ final class BrewService: @unchecked Sendable {
         try await withCheckedThrowingContinuation { continuation in
             let process = Process()
             let pipe = Pipe()
-            let outputData = NSMutableData()
+            let outputBuffer = OutputBuffer()
 
             process.executableURL = URL(fileURLWithPath: command)
             process.arguments = arguments
@@ -841,7 +854,7 @@ final class BrewService: @unchecked Sendable {
             pipe.fileHandleForReading.readabilityHandler = { handle in
                 let data = handle.availableData
                 guard !data.isEmpty else { return }
-                outputData.append(data)
+                outputBuffer.append(data)
                 if let text = String(data: data, encoding: .utf8) {
                     let lines = text.components(separatedBy: .newlines)
                     for line in lines where !line.isEmpty {
@@ -854,10 +867,10 @@ final class BrewService: @unchecked Sendable {
                 pipe.fileHandleForReading.readabilityHandler = nil
                 let remainingData = pipe.fileHandleForReading.readDataToEndOfFile()
                 if !remainingData.isEmpty {
-                    outputData.append(remainingData)
+                    outputBuffer.append(remainingData)
                 }
 
-                let output = String(data: outputData as Data, encoding: .utf8) ?? ""
+                let output = String(data: outputBuffer.snapshot, encoding: .utf8) ?? ""
 
                 if process.terminationStatus == 0 {
                     continuation.resume(returning: output)
@@ -899,15 +912,26 @@ final class BrewService: @unchecked Sendable {
 
     // MARK: - Admin Privilege Execution
 
-    private func runCommandWithAdmin(
+    /// Run one or more brew invocations under a single admin password
+    /// prompt. The password is requested once (per attempt), written to the
+    /// askpass transport file, and reused across every batch. Previously
+    /// each batch prompted separately, so greedy mode (regular + greedy
+    /// batches) asked the user for their password twice per run.
+    ///
+    /// On a wrong password only the failing batch is retried (up to
+    /// `maxAttempts` prompts total); batches that already completed are
+    /// never re-run.
+    private func runCommandsWithAdmin(
         _ command: String,
-        arguments: [String],
+        argumentBatches: [[String]],
         packageName: String? = nil,
         onLine: (@Sendable (String) -> Void)? = nil
-    ) async throws -> String {
+    ) async throws -> [String] {
         let maxAttempts = 3
         var attempt = 0
         var errorMessageForRetry: String? = nil
+        var outputs: [String] = []
+        var batchIndex = 0
 
         while attempt < maxAttempts {
             attempt += 1
@@ -967,13 +991,22 @@ final class BrewService: @unchecked Sendable {
             }
 
             do {
-                return try await runCommandStreaming(
-                    command,
-                    arguments: arguments,
-                    extraEnvironment: env,
-                    onProcess: { processHolder.set($0) },
-                    onLine: watchedOnLine
-                )
+                // Run every remaining batch under this one password prompt.
+                // `batchIndex` lives outside the attempt loop, so batches
+                // that completed before a wrong-password failure are not
+                // re-run on the next attempt.
+                while batchIndex < argumentBatches.count {
+                    let output = try await runCommandStreaming(
+                        command,
+                        arguments: argumentBatches[batchIndex],
+                        extraEnvironment: env,
+                        onProcess: { processHolder.set($0) },
+                        onLine: watchedOnLine
+                    )
+                    outputs.append(output)
+                    batchIndex += 1
+                }
+                return outputs
             } catch let BrewError.commandFailed(output) where Self.isAuthFailure(output) && attempt < maxAttempts {
                 errorMessageForRetry = "Incorrect password — please try again."
                 continue
@@ -985,6 +1018,22 @@ final class BrewService: @unchecked Sendable {
 
         // Should be unreachable due to throws in the loop
         throw BrewError.commandFailed("Admin retry loop exhausted.")
+    }
+
+    /// Single-invocation convenience over `runCommandsWithAdmin`.
+    private func runCommandWithAdmin(
+        _ command: String,
+        arguments: [String],
+        packageName: String? = nil,
+        onLine: (@Sendable (String) -> Void)? = nil
+    ) async throws -> String {
+        let outputs = try await runCommandsWithAdmin(
+            command,
+            argumentBatches: [arguments],
+            packageName: packageName,
+            onLine: onLine
+        )
+        return outputs.first ?? ""
     }
 
     /// Open the FIFO for writing and push a single line of content. Uses a
@@ -1041,17 +1090,16 @@ final class BrewService: @unchecked Sendable {
             return UpdateResult(packages: [], timestamp: Date())
         }
 
+        // One admin prompt for the whole run: in greedy mode the regular and
+        // greedy batches share a single password prompt instead of each
+        // batch presenting its own.
         let names = packages.map(\.name)
-        var upgradeOutputs: [String] = []
-        for upgradeArgs in Self.upgradeArgumentBatches(greedy: greedy, packageNames: names) {
-            let output = try await runCommandWithAdmin(
-                brewPath,
-                arguments: upgradeArgs,
-                packageName: nil,
-                onLine: onProgress
-            )
-            upgradeOutputs.append(output)
-        }
+        let upgradeOutputs = try await runCommandsWithAdmin(
+            brewPath,
+            argumentBatches: Self.upgradeArgumentBatches(greedy: greedy, packageNames: names),
+            packageName: nil,
+            onLine: onProgress
+        )
 
         let combined = upgradeOutputs.joined(separator: "\n")
         let upgraded = Self.parseUpgradeOutput(combined)

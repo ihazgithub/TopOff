@@ -106,6 +106,11 @@ final class MenuBarViewModel: ObservableObject {
             defaults.set(rememberSkippedPackages, forKey: "rememberSkippedPackages")
         }
     }
+    @Published var notificationsEnabled: Bool {
+        didSet {
+            defaults.set(notificationsEnabled, forKey: "notificationsEnabled")
+        }
+    }
     @Published var rememberedSkipList: Set<String> {
         didSet {
             saveRememberedSkipList()
@@ -153,6 +158,12 @@ final class MenuBarViewModel: ObservableObject {
         self.autoCleanupStyle = AutoCleanupStyle.stored(in: defaults)
         self.greedyModeEnabled = defaults.bool(forKey: "greedyModeEnabled")
         self.rememberSkippedPackages = defaults.bool(forKey: "rememberSkippedPackages")
+        // Default to true for notifications — same nil-check pattern as autoCleanupEnabled
+        if defaults.object(forKey: "notificationsEnabled") == nil {
+            self.notificationsEnabled = true
+        } else {
+            self.notificationsEnabled = defaults.bool(forKey: "notificationsEnabled")
+        }
         self.rememberedSkipList = Self.loadRememberedSkipList(from: defaults)
         spinnerFrames = Self.generateSpinnerFrames()
         loadUpdateHistory()
@@ -444,7 +455,10 @@ final class MenuBarViewModel: ObservableObject {
             updateIconState()
             success = true
         } catch {
-            iconState = .upToDate
+            // Keep reflecting what we already know: a failed check (e.g.
+            // offline) must not flip the icon to the "up to date" mug while
+            // previously-discovered outdated packages are still pending.
+            updateIconState()
             print("Failed to check for updates: \(error)")
         }
 

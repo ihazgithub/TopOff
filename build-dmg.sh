@@ -1,5 +1,9 @@
 #!/bin/bash
-set -e
+# -e: exit on error; -u: unset vars are errors; -o pipefail: a pipeline
+# fails if ANY stage fails. Without pipefail, `xcodebuild ... | tail -3`
+# reports tail's exit status (0) even when the build fails, and the
+# script would happily sign + notarize a stale app from a previous build.
+set -euo pipefail
 
 # TopOff DMG Builder
 # Usage: ./build-dmg.sh [version]
@@ -16,7 +20,7 @@ SIGNING_IDENTITY="Developer ID Application: Malsah Labs LLC (GN4XAZC5QR)"
 NOTARY_PROFILE="malsah-labs-notary"
 
 # Get version from argument or read from project
-if [ -n "$1" ]; then
+if [ -n "${1:-}" ]; then
     VERSION="$1"
 else
     VERSION=$(grep 'MARKETING_VERSION' "$PROJECT_DIR/TopOff.xcodeproj/project.pbxproj" | head -1 | sed 's/.*= //' | sed 's/;.*//' | tr -d ' ')

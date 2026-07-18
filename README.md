@@ -13,11 +13,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v2.0.2.dmg">Download TopOff for macOS</a>
+  <a href="https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v2.0.3.dmg">Download TopOff for macOS</a>
 </p>
 
 <p align="center">
-  <em>Version 2.0 is here — signed and notarized by Apple, so it installs cleanly on first launch. <a href="CHANGELOG.md">See what's new →</a></em>
+  <em>Version 2.0.3 — more reliable updates and a single admin password prompt. <a href="CHANGELOG.md">See what's new →</a></em>
 </p>
 
 If you use Homebrew, you have probably forgotten to run `brew update && brew upgrade` for weeks at a time. TopOff checks quietly in the background, shows outdated packages from the menu bar, and lets you update with one click.
@@ -37,15 +37,21 @@ If you use Homebrew, you have probably forgotten to run `brew update && brew upg
 - **Update history** — View recently updated packages with version changes
 - **Configurable check interval** — Check every hour, 4 hours (default), 12 hours, 24 hours, or manually
 - **Launch at login** — Always have TopOff ready
+- **Desktop notifications** — Optional banner when an update run finishes, so you can kick off updates and walk away
 - **Automatic retry on network restore** — If the app launches without internet (e.g., at startup before WiFi connects), it automatically checks for updates once connectivity is restored
 - **Update notifications** — Checks GitHub for new releases on launch and periodically while running
 - **See what changed** — View upgraded packages and freed disk space in the menu
 
 ## Screenshots
 
-![TopOff Demo](TopOff_demo.gif)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/topoff-demo-dark.gif">
+  <img src="docs/assets/topoff-demo.gif" alt="TopOff Demo" width="360">
+</picture>
 
 The menu bar icon tells you at a glance if updates are available:
+
+<img src="docs/assets/icon-states.png" alt="Menu bar icon states — up to date, updates available, updating, done" width="176">
 
 | Icon | Meaning |
 |------|---------|
@@ -54,11 +60,15 @@ The menu bar icon tells you at a glance if updates are available:
 | Spinning arrows | Checking for updates or updating — click to see live progress |
 | Checkmark | Update completed successfully |
 
+When an update run finishes, TopOff can post a desktop notification so you don't have to keep the menu open (on by default — toggle it under **Options → Notifications**):
+
+<img src="docs/assets/notification.png" alt="TopOff desktop notification after an update finishes" width="394">
+
 ## Installation
 
 ### Download (Recommended)
 
-1. Download the [latest DMG](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v2.0.2.dmg)
+1. Download the [latest DMG](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v2.0.3.dmg)
 2. Open the DMG and drag TopOff to your Applications folder
 3. Launch TopOff. It's signed and notarized by Apple, so it opens immediately on first launch — no trip through Privacy & Security needed.
 
@@ -90,6 +100,7 @@ All preferences are available under the **Options** submenu:
 - **Cleanup** — Run standard cleanup, run **Deep Cache Prune…**, or choose the saved **Auto Cleanup Style**
 - **Auto Cleanup Style** — Defaults to standard `brew cleanup`. Power users can opt into `brew cleanup --prune=all` after a confirmation step. This removes Homebrew cached downloads to reclaim more disk space, but does not uninstall apps or command line tools.
 - **Greedy Mode** — Always check and update everything, including apps that auto-update themselves (off by default — see [Greedy Mode explained](#whats-the-difference-between-update-all-and-greedy))
+- **Notifications** — Show a desktop banner when an update finishes (on by default)
 - **Check Interval** — How often TopOff checks for outdated packages:
 - **View Update History** — See recently updated packages with version changes
 

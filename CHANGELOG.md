@@ -1,5 +1,26 @@
 # Changelog
 
+## v2.0.3 — July 2026
+
+### New
+
+- **Notifications toggle** — the "update finished" desktop banner can now be turned on or off under **Options → Notifications** (on by default)
+
+### Fixes
+
+- **No more stuck spinner on large updates** — Homebrew output over the system pipe buffer (~64 KB, easy to hit after a few weeks of formula churn) could hang an update indefinitely; output is now streamed as it's produced
+- **One password prompt in Greedy mode** — Update All (Greedy) with admin-protected casks used to ask for your password twice, once per upgrade pass; it now asks once and reuses it for the whole run
+- **Icon no longer resets to "up to date" after a failed check** — if a background check fails (e.g. offline), the menu bar mug keeps showing the packages already known to be outdated
+- **Update-finished notifications arrive reliably** — banners now show even while TopOff is frontmost, and are skipped cleanly instead of erroring when notification permission is denied
+- **Safer release builds** — the DMG build script now stops on compile failures instead of packaging a stale build (internal tooling fix)
+
+### Notes
+
+- Existing settings carry over; no manual migration needed.
+- Supports macOS 14 and later. Universal binary for Apple Silicon and Intel.
+
+---
+
 ## v2.0.2 — July 2026
 
 ### Fixes

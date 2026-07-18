@@ -31,9 +31,16 @@ DerivedData/
 *.dSYM/
 *.dSYM.zip
 
+# Profiling / coverage artifacts
+*.profraw
+
 # Editor metadata
 .idea/
 .vscode/
 
 # Session-local workflow / brainstorming caches
 .superpowers/
+demo/
+
+# Raw marketing media (recordings, source GIFs) — too heavy for git
+media/

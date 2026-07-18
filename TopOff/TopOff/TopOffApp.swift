@@ -147,6 +147,9 @@ struct TopOffApp: App {
                 Toggle("Greedy Mode", isOn: $viewModel.greedyModeEnabled)
                     .help("Includes apps with built-in auto-update in both checks and upgrades, such as Chrome, Slack, and VS Code.")
 
+                Toggle("Notifications", isOn: $viewModel.notificationsEnabled)
+                    .help("Shows a notification banner when an update finishes.")
+
                 Divider()
 
                 Toggle("Remember Skipped Packages", isOn: $viewModel.rememberSkippedPackages)
