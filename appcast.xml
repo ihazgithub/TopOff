@@ -1,0 +1,15 @@
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>TopOff</title>
+        <item>
+            <title>2.1</title>
+            <pubDate>Fri, 17 Jul 2026 19:23:15 -0700</pubDate>
+            <link>https://github.com/ihazgithub/TopOff</link>
+            <sparkle:version>11</sparkle:version>
+            <sparkle:shortVersionString>2.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/ihazgithub/TopOff/releases/download/v2.1/TopOff-v2.1.dmg" length="8093499" type="application/octet-stream" sparkle:edSignature="K0prurPp5SuEKM3Kmhzfki2nVU/9+SDd9viKYDYhySLVZrt849Q9pnzkrOJcF+PSmE4bxLxgbZR8qGEl2BFAAQ=="/>
+        </item>
+    </channel>
+</rss>
