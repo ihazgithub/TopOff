@@ -4,6 +4,7 @@ import SwiftUI
 @main
 struct TopOffApp: App {
     @StateObject private var viewModel = MenuBarViewModel()
+    @StateObject private var appUpdater = AppUpdater.shared
     @Environment(\.openWindow) private var openWindow
 
     var body: some Scene {
@@ -182,10 +183,15 @@ struct TopOffApp: App {
 
             Divider()
 
-            Button(viewModel.appUpdateInfo != nil ? "About TopOff (Update Available)" : "About TopOff") {
+            Button("About TopOff") {
                 openWindow(id: "about")
                 NSApp.activate(ignoringOtherApps: true)
             }
+
+            Button("Check for App Updates…") {
+                appUpdater.checkForUpdates()
+            }
+            .disabled(!appUpdater.canCheckForUpdates)
 
             Button("Quit TopOff") {
                 NSApplication.shared.terminate(nil)

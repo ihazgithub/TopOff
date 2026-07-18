@@ -20,13 +20,14 @@
 		A1B2C3D4E5F60004 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60016 /* NotificationManager.swift */; };
 		A1B2C3D4E5F60005 /* MenuBarViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60017 /* MenuBarViewModel.swift */; };
 		A1B2C3D4E5F60006 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60018 /* AboutView.swift */; };
-		A1B2C3D4E5F60007 /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60019 /* UpdateChecker.swift */; };
 		A1B2C3D4E5F60008 /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6001A /* NetworkMonitor.swift */; };
 		A1B2C3D4E5F60009 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6001B /* HistoryView.swift */; };
 		A1B2C3D4E5F60101 /* BrewServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60111 /* BrewServiceTests.swift */; };
 		AB5B4CA3CB11A98305FDF00A /* DisplayVersionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4CF3A0B84B985C4B3BE3D90 /* DisplayVersionTests.swift */; };
 		C5ABE3636DCEED4330162E0C /* DisplayVersion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 602F71524F09E1230078D225 /* DisplayVersion.swift */; };
 		E7ADB7B4A926EB060F6E9A47 /* AdminPasswordPromptWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18FD970D70069AC5CA2EA99B /* AdminPasswordPromptWindow.swift */; };
+		A1B2C3D4E5F60200 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D4E5F60201 /* Sparkle */; };
+		A1B2C3D4E5F60203 /* AppUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60204 /* AppUpdater.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -55,9 +56,9 @@
 		A1B2C3D4E5F60016 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60017 /* MenuBarViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarViewModel.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60018 /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
-		A1B2C3D4E5F60019 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6001A /* NetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitor.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6001B /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60204 /* AppUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUpdater.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60110 /* TopOffTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TopOffTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1B2C3D4E5F60111 /* BrewServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrewServiceTests.swift; sourceTree = "<group>"; };
 		A1B6F8F7F3E364B160D91BFC /* HistoryGrouping.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HistoryGrouping.swift; sourceTree = "<group>"; };
@@ -71,6 +72,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A1B2C3D4E5F60200 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -103,7 +105,7 @@
 				A1B2C3D4E5F6001A /* NetworkMonitor.swift */,
 				A1B2C3D4E5F60018 /* AboutView.swift */,
 				A1B2C3D4E5F6001B /* HistoryView.swift */,
-				A1B2C3D4E5F60019 /* UpdateChecker.swift */,
+				A1B2C3D4E5F60204 /* AppUpdater.swift */,
 				A1B2C3D4E5F60012 /* Assets.xcassets */,
 				A1B2C3D4E5F60013 /* TopOff.entitlements */,
 				A1B2C3D4E5F60014 /* Info.plist */,
@@ -154,6 +156,9 @@
 			dependencies = (
 			);
 			name = TopOff;
+			packageProductDependencies = (
+				A1B2C3D4E5F60201 /* Sparkle */,
+			);
 			productName = TopOff;
 			productReference = A1B2C3D4E5F60010 /* TopOff.app */;
 			productType = "com.apple.product-type.application";
@@ -204,6 +209,9 @@
 				Base,
 			);
 			mainGroup = A1B2C3D4E5F60030;
+			packageReferences = (
+				A1B2C3D4E5F60202 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
 			productRefGroup = A1B2C3D4E5F60032 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -244,7 +252,7 @@
 				A1B2C3D4E5F60008 /* NetworkMonitor.swift in Sources */,
 				A1B2C3D4E5F60006 /* AboutView.swift in Sources */,
 				A1B2C3D4E5F60009 /* HistoryView.swift in Sources */,
-				A1B2C3D4E5F60007 /* UpdateChecker.swift in Sources */,
+				A1B2C3D4E5F60203 /* AppUpdater.swift in Sources */,
 				C5ABE3636DCEED4330162E0C /* DisplayVersion.swift in Sources */,
 				82CB87E23243B30181118979 /* SkippedPackagesView.swift in Sources */,
 				51FDFB24EAFDEFE9D1FDAA1A /* BrewError+Classification.swift in Sources */,
@@ -402,7 +410,7 @@
 				CODE_SIGN_ENTITLEMENTS = TopOff/TopOff.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -414,7 +422,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 2.0.3;
+				MARKETING_VERSION = 2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.topoff.TopOff;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -430,7 +438,7 @@
 				CODE_SIGN_ENTITLEMENTS = TopOff/TopOff.entitlements;
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				CODE_SIGN_IDENTITY = "Developer ID Application";
 				DEVELOPMENT_TEAM = GN4XAZC5QR;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -443,7 +451,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 2.0.3;
+				MARKETING_VERSION = 2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.topoff.TopOff;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -456,11 +464,11 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 2.0.3;
+				MARKETING_VERSION = 2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.topoff.TopOffTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -474,11 +482,11 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 2.0.3;
+				MARKETING_VERSION = 2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.topoff.TopOffTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -518,6 +526,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A1B2C3D4E5F60202 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.7.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A1B2C3D4E5F60201 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A1B2C3D4E5F60202 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A1B2C3D4E5F60050 /* Project object */;
 }

@@ -56,8 +56,6 @@ struct SMAppServiceLaunchAtLogin: LaunchAtLoginManaging {
 
 @MainActor
 final class MenuBarViewModel: ObservableObject {
-    static let appUpdateCheckInterval: TimeInterval = 21_600
-
     @Published var iconState: MenuBarIconState = .upToDate {
         didSet {
             if iconState == .checking || iconState == .updating {
@@ -117,9 +115,6 @@ final class MenuBarViewModel: ObservableObject {
         }
     }
 
-    @Published var appUpdateInfo: AppUpdateInfo?
-    @Published var isCheckingForAppUpdate = false
-    @Published var appUpdateChecked = false
     @Published var spinnerFrame: NSImage?
     @Published var updateHistory: [UpdateResult] = [] {
         didSet {
@@ -130,11 +125,9 @@ final class MenuBarViewModel: ObservableObject {
     private let defaults: UserDefaults
     private let loginItemManager: LaunchAtLoginManaging
     private let brewService = BrewService()
-    private let updateChecker = UpdateChecker()
     private let notificationManager = NotificationManager.shared
     private let networkMonitor = NetworkMonitor()
     private var checkTimer: Timer?
-    private var appUpdateCheckTimer: Timer?
     private var iconAnimationTimer: Timer?
     private var spinnerFrames: [NSImage] = []
     private var spinnerFrameIndex = 0
@@ -180,12 +173,6 @@ final class MenuBarViewModel: ObservableObject {
             let success = await checkForUpdates()
             initialCheckSucceeded = success
             startPeriodicChecks()
-        }
-
-        // Check for app updates from GitHub
-        Task {
-            appUpdateInfo = await updateChecker.checkForUpdate()
-            startPeriodicAppUpdateChecks()
         }
     }
 
@@ -467,15 +454,6 @@ final class MenuBarViewModel: ObservableObject {
         return success
     }
 
-    func checkForAppUpdate() {
-        Task {
-            isCheckingForAppUpdate = true
-            appUpdateInfo = await updateChecker.checkForUpdate()
-            isCheckingForAppUpdate = false
-            appUpdateChecked = true
-        }
-    }
-
     private func promptForDeepCachePrune() -> Bool {
         let alert = NSAlert()
         alert.messageText = "Run Deep Cache Prune?"
@@ -732,16 +710,6 @@ final class MenuBarViewModel: ObservableObject {
     func stopPeriodicChecks() {
         checkTimer?.invalidate()
         checkTimer = nil
-    }
-
-    private func startPeriodicAppUpdateChecks() {
-        appUpdateCheckTimer?.invalidate()
-        appUpdateCheckTimer = Timer.scheduledTimer(withTimeInterval: Self.appUpdateCheckInterval, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                self.appUpdateInfo = await self.updateChecker.checkForUpdate()
-            }
-        }
     }
 
     private func restartPeriodicChecks() {

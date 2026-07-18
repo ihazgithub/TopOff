@@ -13,11 +13,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v2.0.3.dmg">Download TopOff for macOS</a>
+  <a href="https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v2.1.dmg">Download TopOff for macOS</a>
 </p>
 
 <p align="center">
-  <em>Version 2.0.3 — more reliable updates and a single admin password prompt. <a href="CHANGELOG.md">See what's new →</a></em>
+  <em>Version 2.1 — TopOff now updates itself. <a href="CHANGELOG.md">See what's new →</a></em>
 </p>
 
 If you use Homebrew, you have probably forgotten to run `brew update && brew upgrade` for weeks at a time. TopOff checks quietly in the background, shows outdated packages from the menu bar, and lets you update with one click.
@@ -39,7 +39,7 @@ If you use Homebrew, you have probably forgotten to run `brew update && brew upg
 - **Launch at login** — Always have TopOff ready
 - **Desktop notifications** — Optional banner when an update run finishes, so you can kick off updates and walk away
 - **Automatic retry on network restore** — If the app launches without internet (e.g., at startup before WiFi connects), it automatically checks for updates once connectivity is restored
-- **Update notifications** — Checks GitHub for new releases on launch and periodically while running
+- **In-app updates** — TopOff keeps itself up to date with [Sparkle](https://sparkle-project.org): signed updates, installed in place with one click
 - **See what changed** — View upgraded packages and freed disk space in the menu
 
 ## Screenshots
@@ -68,7 +68,7 @@ When an update run finishes, TopOff can post a desktop notification so you don't
 
 ### Download (Recommended)
 
-1. Download the [latest DMG](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v2.0.3.dmg)
+1. Download the [latest DMG](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v2.1.dmg)
 2. Open the DMG and drag TopOff to your Applications folder
 3. Launch TopOff. It's signed and notarized by Apple, so it opens immediately on first launch — no trip through Privacy & Security needed.
 

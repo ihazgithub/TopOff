@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AboutView: View {
     @EnvironmentObject private var viewModel: MenuBarViewModel
+    @ObservedObject private var appUpdater = AppUpdater.shared
 
     private let appVersion: String = {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.2"
@@ -21,24 +22,13 @@ struct AboutView: View {
             Text("Version \(appVersion)")
                 .foregroundStyle(.secondary)
 
-            if let update = viewModel.appUpdateInfo {
-                Link("Update Available — v\(update.latestVersion)", destination: update.downloadURL)
-                    .font(.callout.weight(.medium))
-            } else if viewModel.isCheckingForAppUpdate {
-                ProgressView()
-                    .controlSize(.small)
-            } else if viewModel.appUpdateChecked {
-                Text("App is up to date")
-                    .foregroundStyle(.secondary)
-                    .font(.callout)
-            } else {
-                Button("Check for Updates") {
-                    viewModel.checkForAppUpdate()
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.blue)
-                .font(.callout)
+            Button("Check for Updates…") {
+                appUpdater.checkForUpdates()
             }
+            .buttonStyle(.plain)
+            .foregroundStyle(.blue)
+            .font(.callout)
+            .disabled(!appUpdater.canCheckForUpdates)
 
             Spacer().frame(height: 4)
 

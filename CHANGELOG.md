@@ -1,9 +1,11 @@
 # Changelog
 
-## v2.0.3 — July 2026
+## v2.1 — July 2026
 
 ### New
 
+- **TopOff updates itself** — powered by [Sparkle](https://sparkle-project.org), the same updater used by most Mac menu bar apps. When a new version ships, TopOff shows an update prompt and installs it in place — no more downloading DMGs by hand. Updates are cryptographically signed and verified before install.
+- **Check for App Updates** — new menu item (and a button in the About window) to check on demand; background checks run about every 6 hours.
 - **Notifications toggle** — the "update finished" desktop banner can now be turned on or off under **Options → Notifications** (on by default)
 
 ### Fixes
@@ -16,6 +18,7 @@
 
 ### Notes
 
+- The old "Update Available" link in the About window (which opened a browser download) has been replaced by the in-app updater.
 - Existing settings carry over; no manual migration needed.
 - Supports macOS 14 and later. Universal binary for Apple Silicon and Intel.
 

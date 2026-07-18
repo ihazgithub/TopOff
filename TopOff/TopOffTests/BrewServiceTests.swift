@@ -28,10 +28,6 @@ final class BrewServiceTests: XCTestCase {
         }
     }
 
-    func testAppUpdateCheckIntervalIsSixHours() {
-        XCTAssertEqual(MenuBarViewModel.appUpdateCheckInterval, 21_600)
-    }
-
     func testParseUpgradeOutputCapturesFormulaVersionTransitions() {
         let output = """
         ==> Upgrading node 20.1.0 -> 22.0.0

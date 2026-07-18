@@ -59,6 +59,31 @@ if [[ "$ARCHS" != *"x86_64"* ]] || [[ "$ARCHS" != *"arm64"* ]]; then
     exit 1
 fi
 
+# Re-sign Sparkle's nested helpers with our Developer ID. Sparkle ships
+# pre-signed by the Sparkle project, but Apple's notary service requires
+# every nested binary to carry OUR Developer ID signature, hardened
+# runtime, and a secure timestamp. Sign inside-out: XPC services and
+# helpers first, then the framework, then the app itself below.
+echo "==> Signing Sparkle framework components..."
+SPARKLE_FW="$RELEASE_APP/Contents/Frameworks/Sparkle.framework"
+codesign --force --options runtime --timestamp \
+    --sign "$SIGNING_IDENTITY" \
+    "$SPARKLE_FW/Versions/B/XPCServices/Installer.xpc"
+# Downloader.xpc keeps its sandbox entitlements (--preserve-metadata)
+codesign --force --options runtime --timestamp \
+    --preserve-metadata=entitlements \
+    --sign "$SIGNING_IDENTITY" \
+    "$SPARKLE_FW/Versions/B/XPCServices/Downloader.xpc"
+codesign --force --options runtime --timestamp \
+    --sign "$SIGNING_IDENTITY" \
+    "$SPARKLE_FW/Versions/B/Autoupdate"
+codesign --force --options runtime --timestamp \
+    --sign "$SIGNING_IDENTITY" \
+    "$SPARKLE_FW/Versions/B/Updater.app"
+codesign --force --options runtime --timestamp \
+    --sign "$SIGNING_IDENTITY" \
+    "$SPARKLE_FW"
+
 # Sign the app with hardened runtime and a secure timestamp (required by notary)
 echo "==> Signing app with Developer ID..."
 codesign --force --options runtime --timestamp \
@@ -147,5 +172,31 @@ xcrun stapler staple "$DMG_FINAL"
 echo "==> Verifying Gatekeeper acceptance..."
 spctl -a -vvv -t install "$DMG_FINAL" 2>&1 | tail -5
 
+# Generate the Sparkle appcast entry for this DMG. Signing uses the
+# EdDSA private key in the login Keychain (created by generate_keys).
+# The enclosure URL must match where the DMG actually gets uploaded:
+# a GitHub release tagged v${VERSION} with the DMG attached.
+echo "==> Generating Sparkle appcast..."
+SPARKLE_BIN="$(find "$HOME/Library/Developer/Xcode/DerivedData" -type d -path "*artifacts/sparkle/Sparkle/bin" -print -quit 2>/dev/null || true)"
+if [ -z "$SPARKLE_BIN" ] || [ ! -x "$SPARKLE_BIN/generate_appcast" ]; then
+    echo "ERROR: Sparkle's generate_appcast not found in DerivedData."
+    echo "       Build TopOff once in Xcode so SPM fetches the Sparkle artifacts."
+    exit 1
+fi
+
+# Stage only this release's DMG so the versioned download-url prefix is
+# correct for every item generate_appcast emits.
+APPCAST_STAGE="$(mktemp -d /tmp/topoff-appcast.XXXXXX)"
+cp "$DMG_FINAL" "$APPCAST_STAGE/"
+"$SPARKLE_BIN/generate_appcast" \
+    --download-url-prefix "https://github.com/ihazgithub/TopOff/releases/download/v${VERSION}/" \
+    --link "https://github.com/ihazgithub/TopOff" \
+    -o "$SCRIPT_DIR/appcast.xml" \
+    "$APPCAST_STAGE"
+rm -rf "$APPCAST_STAGE"
+
 echo "==> Done: $DMG_NAME"
 echo "    $(du -h "$DMG_FINAL" | cut -f1) compressed"
+echo "    appcast.xml updated — to ship this update:"
+echo "      1. Create GitHub release tagged v${VERSION} with $DMG_NAME attached"
+echo "      2. Commit + push appcast.xml so the feed goes live"
