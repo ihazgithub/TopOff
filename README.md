@@ -13,11 +13,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v2.1.dmg">Download TopOff for macOS</a>
+  <a href="https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v2.2.dmg">Download TopOff for macOS</a>
 </p>
 
 <p align="center">
-  <em>Version 2.1 — TopOff now updates itself. <a href="CHANGELOG.md">See what's new →</a></em>
+  <em>Version 2.2: see every outdated package in one window. <a href="CHANGELOG.md">See what's new →</a></em>
 </p>
 
 If you use Homebrew, you have probably forgotten to run `brew update && brew upgrade` for weeks at a time. TopOff checks quietly in the background, shows outdated packages from the menu bar, and lets you update with one click.
@@ -28,7 +28,7 @@ If you use Homebrew, you have probably forgotten to run `brew update && brew upg
 - **Automatic update checking** — Periodically checks for outdated packages in the background
 - **Smart icon status** — Full mug when up-to-date, half-full when updates are available, animated spinner when actively updating
 - **Real-time progress** — See exactly which package is being updated as it happens — click the menu bar during updates to watch live
-- **Package details at a glance** — See outdated package names and version changes directly in the menu
+- **Package details at a glance** — See outdated packages right in the menu, and open the full list with version changes in its own window
 - **Selective updates** — Update or skip individual packages
 - **Greedy mode** — Optionally include apps that handle their own updates (Chrome, Slack, etc.) in both scheduled checks and upgrades
 - **Auto cleanup** — Automatically runs standard `brew cleanup` after upgrades, with an optional deep-prune style for power users
@@ -68,7 +68,7 @@ When an update run finishes, TopOff can post a desktop notification so you don't
 
 ### Download (Recommended)
 
-1. Download the [latest DMG](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v2.1.dmg)
+1. Download the [latest DMG](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v2.2.dmg)
 2. Open the DMG and drag TopOff to your Applications folder
 3. Launch TopOff. It's signed and notarized by Apple, so it opens immediately on first launch — no trip through Privacy & Security needed.
 
@@ -86,7 +86,7 @@ When an update run finishes, TopOff can post a desktop notification so you don't
 ## Usage
 
 1. Click the beer mug icon in your menu bar
-2. See which packages need updating with version details
+2. See which packages need updating. With more than five, the last one is followed by **Show All** (for example, **Show All 8 Packages…**), which opens every package with its version details
 3. Choose **Update All**, **Update All (Greedy)**, or update individual packages
 4. Watch the icon animate while updates run
 5. Check the menu to see what was upgraded and how much disk space was freed
@@ -135,9 +135,10 @@ Greedy Mode is off by default. You can toggle it anytime under **Options > Greed
 
 ## Privacy & Network Connections
 
-TopOff makes only one network connection:
+TopOff itself only ever connects to GitHub, to keep itself up to date:
 
-- **GitHub API** (`api.github.com`) — Checks for new TopOff releases on launch and periodically while running
+- **Update feed** (`raw.githubusercontent.com`): checks for a new version of TopOff about every 6 hours, using [Sparkle](https://sparkle-project.org)
+- **Update download** (`github.com`): fetches a new version only when you choose to install it
 
 That's it. No analytics, no telemetry, no tracking.
 

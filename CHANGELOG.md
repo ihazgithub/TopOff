@@ -1,5 +1,19 @@
 # Changelog
 
+## v2.2 — September 2026
+
+### New
+
+- **See every outdated package:** when more than five packages need updating, the menu now ends with a **Show All** item (for example, **Show All 8 Packages…**) that opens an **Outdated Packages** window listing all of them with their version changes. Update or skip any package from its row, or run Update All from the bottom of the window.
+
+### Notes
+
+- If you're on 2.1, TopOff offers this update automatically. Versions 2.0.2 and earlier don't have the in-app updater, so download the DMG once and it'll keep itself current from then on.
+- Existing settings carry over; no manual migration needed.
+- Supports macOS 14 and later. Universal binary for Apple Silicon and Intel.
+
+---
+
 ## v2.1 — July 2026
 
 ### New
