@@ -48,8 +48,11 @@ struct TopOffApp: App {
                 }
 
                 if overflow > 0 {
-                    Text("...and \(overflow) more")
-                        .foregroundStyle(.secondary)
+                    Button("Show All \(visible.count) Packages…") {
+                        openWindow(id: "outdated")
+                        NSApp.activate(ignoringOtherApps: true)
+                    }
+                    .help("Opens a window listing every outdated package.")
                 }
 
                 Divider()
@@ -215,6 +218,13 @@ struct TopOffApp: App {
 
         Window("Update History", id: "history") {
             HistoryView()
+                .environmentObject(viewModel)
+        }
+        .windowResizability(.contentSize)
+        .defaultPosition(.center)
+
+        Window("Outdated Packages", id: "outdated") {
+            OutdatedPackagesView()
                 .environmentObject(viewModel)
         }
         .windowResizability(.contentSize)

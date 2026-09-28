@@ -70,6 +70,8 @@ final class MenuBarViewModel: ObservableObject {
     @Published private(set) var isRunning = false
     @Published var statusMessage: String?
     @Published private(set) var updateProgress: UpdateProgressSnapshot?
+    /// Name of the package a single-package Update is working on, if any.
+    @Published private(set) var packageBeingUpgraded: String?
     @Published var outdatedPackages: [OutdatedPackage] = []
     @Published var skippedPackages: Set<String> = []
     @Published var checkInterval: TimeInterval {
@@ -299,6 +301,7 @@ final class MenuBarViewModel: ObservableObject {
 
         Task {
             isRunning = true
+            packageBeingUpgraded = package.name
             iconState = .updating
             statusMessage = "Updating \(package.name)..."
 
@@ -372,6 +375,7 @@ final class MenuBarViewModel: ObservableObject {
                 }
             }
 
+            packageBeingUpgraded = nil
             isRunning = false
         }
     }
