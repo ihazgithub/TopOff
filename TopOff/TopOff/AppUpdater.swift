@@ -21,13 +21,21 @@ final class AppUpdater: ObservableObject {
     private let controller: SPUStandardUpdaterController
 
     private init() {
-        // startingUpdater: true kicks off Sparkle's scheduled background
-        // checks immediately.
         controller = SPUStandardUpdaterController(
-            startingUpdater: true,
+            startingUpdater: false,
             updaterDelegate: nil,
             userDriverDelegate: nil
         )
+        #if DEBUG
+        // A dev build carries the version of the source it was built from,
+        // so a scheduled check could only ever offer to replace it with a
+        // release build. Manual "Check for App Updates…" still works for
+        // exercising the updater UI. Set before starting so no scheduled
+        // check is queued first.
+        controller.updater.automaticallyChecksForUpdates = false
+        #endif
+        // Starting kicks off Sparkle's scheduled background checks.
+        controller.startUpdater()
         controller.updater.publisher(for: \.canCheckForUpdates)
             .assign(to: &$canCheckForUpdates)
     }

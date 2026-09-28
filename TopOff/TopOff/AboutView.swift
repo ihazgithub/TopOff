@@ -5,7 +5,14 @@ struct AboutView: View {
     @ObservedObject private var appUpdater = AppUpdater.shared
 
     private let appVersion: String = {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.2"
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.2"
+        #if DEBUG
+        // Debug builds run under their own bundle ID alongside the installed
+        // app, and the menu bar icons are identical; this is the tell.
+        return "\(version) (Debug)"
+        #else
+        return version
+        #endif
     }()
 
     var body: some View {
