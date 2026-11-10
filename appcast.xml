@@ -3,6 +3,15 @@
     <channel>
         <title>TopOff</title>
         <item>
+            <title>2.2.1</title>
+            <pubDate>Mon, 09 Nov 2026 21:05:08 -0700</pubDate>
+            <link>https://github.com/ihazgithub/TopOff</link>
+            <sparkle:version>13</sparkle:version>
+            <sparkle:shortVersionString>2.2.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/ihazgithub/TopOff/releases/download/v2.2.1/TopOff-v2.2.1.dmg" length="8183033" type="application/octet-stream" sparkle:edSignature="O4F5oucwAfMNMQwOeb0NuGP69H7ZEk929/mEZMyo4py6bbpPC0L1rUEii+vNInf+mkhhKV9xtjmLFKX3iSDaAQ=="/>
+        </item>
+        <item>
             <title>2.2</title>
             <pubDate>Mon, 28 Sep 2026 14:19:46 -0700</pubDate>
             <link>https://github.com/ihazgithub/TopOff</link>
