@@ -1,5 +1,23 @@
 # Changelog
 
+## v2.2.1 — November 2026
+
+### Fixes
+
+- **Version numbers are back in Last Update and History:** after recent Homebrew releases changed how upgrades are reported, every updated package showed a **?** instead of its new version. TopOff reads the new format again, so you'll see the real version for each package. Updates from before this fix had no version saved, so they now show just the package name instead of a **?**.
+
+### New
+
+- **A tidier Last Update list:** the menu shows the five most recent packages from your last update. If more were updated, the rest are one click away in a **More** submenu (for example, **4 More**), so a big update no longer stretches the menu down the screen.
+
+### Notes
+
+- If you're on 2.1 or later, TopOff offers this update automatically.
+- Existing settings and history carry over; no manual migration needed.
+- Supports macOS 14 and later. Universal binary for Apple Silicon and Intel.
+
+---
+
 ## v2.2 — September 2026
 
 ### New

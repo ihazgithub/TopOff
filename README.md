@@ -13,11 +13,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v2.2.dmg">Download TopOff for macOS</a>
+  <a href="https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v2.2.1.dmg">Download TopOff for macOS</a>
 </p>
 
 <p align="center">
-  <em>Version 2.2: see every outdated package in one window. <a href="CHANGELOG.md">See what's new →</a></em>
+  <em>Version 2.2.1: version numbers are back in Last Update and History. <a href="CHANGELOG.md">See what's new →</a></em>
 </p>
 
 If you use Homebrew, you have probably forgotten to run `brew update && brew upgrade` for weeks at a time. TopOff checks quietly in the background, shows outdated packages from the menu bar, and lets you update with one click.
@@ -68,7 +68,7 @@ When an update run finishes, TopOff can post a desktop notification so you don't
 
 ### Download (Recommended)
 
-1. Download the [latest DMG](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v2.2.dmg)
+1. Download the [latest DMG](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v2.2.1.dmg)
 2. Open the DMG and drag TopOff to your Applications folder
 3. Launch TopOff. It's signed and notarized by Apple, so it opens immediately on first launch — no trip through Privacy & Security needed.
 
@@ -89,7 +89,7 @@ When an update run finishes, TopOff can post a desktop notification so you don't
 2. See which packages need updating. With more than five, the last one is followed by **Show All** (for example, **Show All 8 Packages…**), which opens every package with its version details
 3. Choose **Update All**, **Update All (Greedy)**, or update individual packages
 4. Watch the icon animate while updates run
-5. Check the menu to see what was upgraded and how much disk space was freed
+5. Check the menu to see what was upgraded and how much disk space was freed. The five most recent packages are listed, and any others are in the **More** submenu
 
 ### Options
 
