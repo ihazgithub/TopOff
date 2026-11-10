@@ -93,13 +93,21 @@ struct TopOffApp: App {
                     Text("Last Update: No changes")
                         .foregroundStyle(.secondary)
                 } else {
+                    let displayPackages = Array(result.packages.prefix(5))
+                    let overflowPackages = Array(result.packages.dropFirst(5))
+
                     Text("Last Update (\(result.count) package\(result.count == 1 ? "" : "s")):")
                         .foregroundStyle(.secondary)
-                    ForEach(result.packages) { package in
-                        Text(package.name).fontWeight(.medium)
-                            + Text(" \(DisplayVersion.abbreviate(package.newVersion))")
-                                .font(.callout)
-                                .foregroundStyle(.secondary)
+                    ForEach(displayPackages) { package in
+                        lastUpdateLabel(for: package)
+                    }
+
+                    if !overflowPackages.isEmpty {
+                        Menu("\(overflowPackages.count) More") {
+                            ForEach(overflowPackages) { package in
+                                lastUpdateLabel(for: package)
+                            }
+                        }
                     }
                 }
 
@@ -236,6 +244,17 @@ struct TopOffApp: App {
         }
         .windowResizability(.contentSize)
         .defaultPosition(.center)
+    }
+
+    private func lastUpdateLabel(for package: UpgradedPackage) -> Text {
+        // Older records have "?" placeholders; show just the name for those.
+        guard package.hasKnownNewVersion else {
+            return Text(package.name).fontWeight(.medium)
+        }
+        return Text(package.name).fontWeight(.medium)
+            + Text(" \(DisplayVersion.abbreviate(package.newVersion))")
+                .font(.callout)
+                .foregroundStyle(.secondary)
     }
 
     private func progressLabel(for item: UpdateProgressItem) -> String {

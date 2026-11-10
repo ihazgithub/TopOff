@@ -75,6 +75,10 @@ struct UpgradedPackage: Identifiable, Codable {
         self.oldVersion = oldVersion
         self.newVersion = newVersion
     }
+
+    var hasKnownNewVersion: Bool {
+        newVersion != "?" && !newVersion.isEmpty
+    }
 }
 
 struct UpdateResult: Codable {
@@ -142,7 +146,7 @@ struct UpdateResult: Codable {
             if let existing = indexByName[cleanName] {
                 // Same package listed twice — prefer the entry with real
                 // version info over a "?"/"" placeholder.
-                if !Self.hasKnownVersion(cleaned[existing]) && Self.hasKnownVersion(candidate) {
+                if !cleaned[existing].hasKnownNewVersion && candidate.hasKnownNewVersion {
                     cleaned[existing] = candidate
                 }
             } else {
@@ -154,9 +158,6 @@ struct UpdateResult: Codable {
         return UpdateResult(packages: cleaned, timestamp: timestamp)
     }
 
-    private static func hasKnownVersion(_ package: UpgradedPackage) -> Bool {
-        package.newVersion != "?" && !package.newVersion.isEmpty
-    }
 }
 
 struct UpdateProgressItem: Identifiable, Equatable {
@@ -312,7 +313,7 @@ final class BrewService: @unchecked Sendable {
         }
 
         let combined = upgradeOutputs.joined(separator: "\n")
-        let upgraded = Self.parseUpgradeOutput(combined)
+        let upgraded = Self.fillingUnknownVersions(Self.parseUpgradeOutput(combined), from: packages)
         return UpdateResult(
             packages: try await appendingReinstalledRefusedCasks(
                 to: upgraded,
@@ -362,8 +363,25 @@ final class BrewService: @unchecked Sendable {
 
     static func parseUpgradeOutput(_ output: String) -> [UpgradedPackage] {
         var packages: [UpgradedPackage] = []
-        var capturedNames = Set<String>()  // Track captured packages to avoid duplicates
+        var indexByName: [String: Int] = [:]  // Track captured packages to avoid duplicates
         var isReadingUpgradeSummary = false
+        // Package named by the most recent "==> Upgrading <name>" header.
+        // Newer Homebrew prints that header first and the versions on the
+        // next line ("  1.0 -> 2.0"), so the versions are attributed back to it.
+        var currentUpgradingName: String?
+
+        // Adds a package, or fills in versions for one captured earlier with
+        // "?" placeholders.
+        func capture(_ package: UpgradedPackage) {
+            if let index = indexByName[package.name] {
+                if !packages[index].hasKnownNewVersion && package.hasKnownNewVersion {
+                    packages[index] = package
+                }
+            } else {
+                indexByName[package.name] = packages.count
+                packages.append(package)
+            }
+        }
 
         let lines = output.components(separatedBy: .newlines)
 
@@ -379,10 +397,8 @@ final class BrewService: @unchecked Sendable {
             }
 
             if isReadingUpgradeSummary,
-               let package = parseGreedyCaskSummaryLine(trimmedLine),
-               !capturedNames.contains(package.name) {
-                capturedNames.insert(package.name)
-                packages.append(package)
+               let package = parseGreedyCaskSummaryLine(trimmedLine) {
+                capture(package)
                 continue
             }
 
@@ -407,19 +423,28 @@ final class BrewService: @unchecked Sendable {
                     let leftParts = parts[0]
                         .split(whereSeparator: { $0 == " " || $0 == "\t" })
                         .map(String.init)
+                    let newVersion = parts[1].trimmingCharacters(in: .whitespaces)
                     if leftParts.count >= 2 {
                         let name = leftParts.dropLast().joined(separator: " ")
                         let oldVersion = leftParts.last ?? ""
-                        let newVersion = parts[1].trimmingCharacters(in: .whitespaces)
-
-                        if !capturedNames.contains(name) {
-                            capturedNames.insert(name)
-                            packages.append(UpgradedPackage(
-                                name: name,
-                                oldVersion: oldVersion,
-                                newVersion: newVersion
-                            ))
-                        }
+                        capture(UpgradedPackage(
+                            name: name,
+                            oldVersion: oldVersion,
+                            newVersion: newVersion
+                        ))
+                    } else if leftParts.count == 1,
+                              let name = currentUpgradingName {
+                        // Indented "  1.0 -> 2.0" line under "==> Upgrading <name>".
+                        // Drop trailing install options ("1.0 -> 2.0 --HEAD").
+                        let version = newVersion
+                            .split(whereSeparator: { $0 == " " || $0 == "\t" })
+                            .first
+                            .map(String.init) ?? newVersion
+                        capture(UpgradedPackage(
+                            name: name,
+                            oldVersion: leftParts[0],
+                            newVersion: version
+                        ))
                     }
                 }
             }
@@ -429,17 +454,19 @@ final class BrewService: @unchecked Sendable {
                 let afterPrefix = line.replacingOccurrences(of: "==> Upgrading ", with: "")
                                       .trimmingCharacters(in: .whitespaces)
 
-                // Skip summary lines like "1 outdated package:" or "2 outdated packages:"
-                if afterPrefix.contains("outdated package") { continue }
+                // Skip summary lines like "1 outdated package:" or
+                // "2 dependents of upgraded formulae:"
+                if afterPrefix.contains("outdated package") || afterPrefix.hasSuffix(":") { continue }
 
                 // Extract package name (first component, handles "chatgpt" or "google-chrome")
                 let components = afterPrefix.components(separatedBy: .whitespaces)
                 let name = components.first ?? ""
 
-                if !name.isEmpty && !capturedNames.contains(name) {
-                    capturedNames.insert(name)
-                    // Use "?" for versions when not available in this format
-                    packages.append(UpgradedPackage(
+                if !name.isEmpty {
+                    currentUpgradingName = name
+                    // Use "?" for versions when not available in this format;
+                    // a following "  old -> new" line fills them in.
+                    capture(UpgradedPackage(
                         name: name,
                         oldVersion: "?",
                         newVersion: "?"
@@ -547,7 +574,7 @@ final class BrewService: @unchecked Sendable {
         // honor that even when TopOff's global Greedy mode is off. For
         // formulae and non-auto_updates casks `--greedy` is a no-op.
         let upgradeOutput = try await runCommand(brewPath, arguments: ["upgrade", "--greedy", package.name])
-        let upgraded = Self.parseUpgradeOutput(upgradeOutput)
+        let upgraded = Self.fillingUnknownVersions(Self.parseUpgradeOutput(upgradeOutput), from: [package])
         return UpdateResult(
             packages: try await appendingReinstalledRefusedCasks(
                 to: upgraded,
@@ -644,6 +671,25 @@ final class BrewService: @unchecked Sendable {
         }
 
         return UpdateResult(packages: reinstalled, timestamp: Date())
+    }
+
+    /// Replaces "?" placeholder versions with the versions `brew outdated`
+    /// reported before the upgrade, for output that never printed them.
+    nonisolated static func fillingUnknownVersions(
+        _ packages: [UpgradedPackage],
+        from candidates: [OutdatedPackage]
+    ) -> [UpgradedPackage] {
+        let candidatesByName = Dictionary(candidates.map { ($0.name, $0) }, uniquingKeysWith: { first, _ in first })
+        return packages.map { package in
+            guard !package.hasKnownNewVersion, let candidate = candidatesByName[package.name] else {
+                return package
+            }
+            return UpgradedPackage(
+                name: package.name,
+                oldVersion: candidate.currentVersion,
+                newVersion: candidate.latestVersion
+            )
+        }
     }
 
     /// After an upgrade attempt, reinstall any casks Homebrew refused ("cannot
@@ -1102,7 +1148,7 @@ final class BrewService: @unchecked Sendable {
         )
 
         let combined = upgradeOutputs.joined(separator: "\n")
-        let upgraded = Self.parseUpgradeOutput(combined)
+        let upgraded = Self.fillingUnknownVersions(Self.parseUpgradeOutput(combined), from: packages)
         return UpdateResult(
             packages: try await appendingReinstalledRefusedCasks(
                 to: upgraded,
@@ -1126,7 +1172,7 @@ final class BrewService: @unchecked Sendable {
             arguments: ["upgrade", "--greedy", package.name],
             packageName: package.name
         )
-        let upgraded = Self.parseUpgradeOutput(upgradeOutput)
+        let upgraded = Self.fillingUnknownVersions(Self.parseUpgradeOutput(upgradeOutput), from: [package])
         return UpdateResult(
             packages: try await appendingReinstalledRefusedCasks(
                 to: upgraded,

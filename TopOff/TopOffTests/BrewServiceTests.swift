@@ -153,6 +153,61 @@ final class BrewServiceTests: XCTestCase {
         XCTAssertFalse(packages.contains { $0.newVersion == "?" }, "no '?' duplicate entries")
     }
 
+    func testParseUpgradeOutputReadsVersionsFromLineUnderUpgradingHeader() {
+        // Newer Homebrew prints "==> Upgrading <name>" first and the versions
+        // on the following indented line, then a final "Upgraded" summary.
+        let output = """
+        ==> Upgrading fd
+          10.2.0 -> 10.3.0
+        ==> Pouring fd--10.3.0.arm64_sequoia.bottle.tar.gz
+        ==> Upgrading 2 dependents of upgraded formulae:
+        ==> Upgrading chatgpt
+          1.2025.300,1761 -> 1.2025.310,1770
+        ==> Upgraded 2 requested outdated packages:
+        fd       10.2.0           -> 10.3.0 (1MB)
+        chatgpt  1.2025.300,1761  -> 1.2025.310,1770
+        """
+
+        let packages = BrewService.parseUpgradeOutput(output)
+
+        XCTAssertEqual(packages.map(\.name), ["fd", "chatgpt"])
+        XCTAssertEqual(packages[0].oldVersion, "10.2.0")
+        XCTAssertEqual(packages[0].newVersion, "10.3.0")
+        XCTAssertEqual(packages[1].oldVersion, "1.2025.300,1761")
+        XCTAssertEqual(packages[1].newVersion, "1.2025.310,1770")
+    }
+
+    func testParseUpgradeOutputFillsPlaceholderFromLaterSummary() {
+        let output = """
+        ==> Upgrading warp
+        ==> Upgraded 1 requested outdated package:
+        warp 0.2026.06.10 -> 0.2026.06.17
+        """
+
+        let packages = BrewService.parseUpgradeOutput(output)
+
+        XCTAssertEqual(packages.count, 1)
+        XCTAssertEqual(packages.first?.oldVersion, "0.2026.06.10")
+        XCTAssertEqual(packages.first?.newVersion, "0.2026.06.17")
+    }
+
+    func testFillingUnknownVersionsUsesOutdatedMetadata() {
+        let parsed = [
+            UpgradedPackage(name: "figma", oldVersion: "?", newVersion: "?"),
+            UpgradedPackage(name: "fd", oldVersion: "10.2.0", newVersion: "10.3.0")
+        ]
+        let candidates = [
+            OutdatedPackage(name: "figma", currentVersion: "125.9.1", latestVersion: "125.10.0"),
+            OutdatedPackage(name: "fd", currentVersion: "1", latestVersion: "2")
+        ]
+
+        let filled = BrewService.fillingUnknownVersions(parsed, from: candidates)
+
+        XCTAssertEqual(filled[0].oldVersion, "125.9.1")
+        XCTAssertEqual(filled[0].newVersion, "125.10.0")
+        XCTAssertEqual(filled[1].newVersion, "10.3.0", "known versions are left alone")
+    }
+
     func testCasksNeedingReinstallExtractsRefusedCaskNames() {
         // Homebrew refuses to upgrade some auto_updates casks in place and
         // recommends a forced reinstall instead.

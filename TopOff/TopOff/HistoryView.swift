@@ -58,11 +58,13 @@ struct HistoryView: View {
                     Text(package.name)
                         .fontWeight(.medium)
                     Spacer(minLength: 8)
-                    Text(versionTransition(package))
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
+                    if package.hasKnownNewVersion {
+                        Text(versionTransition(package))
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
                 }
             }
         }
