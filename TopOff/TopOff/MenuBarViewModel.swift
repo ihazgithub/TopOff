@@ -170,6 +170,8 @@ final class MenuBarViewModel: ObservableObject {
 
         guard !skipInitialChecks else { return }
 
+        AskpassServer.removeStaleFiles()
+
         // Check for updates on launch
         Task {
             let success = await checkForUpdates()

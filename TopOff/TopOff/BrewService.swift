@@ -361,6 +361,25 @@ final class BrewService: @unchecked Sendable {
         return [["upgrade"] + names]
     }
 
+    /// The requested packages that `brew outdated --cask --quiet` still
+    /// lists, in the order requested. Lines that aren't a requested name
+    /// (auto-update hints and the like) are ignored.
+    nonisolated static func namesNeedingAdminRetry(requested: [String], outdatedCasksOutput: String) -> [String] {
+        let outdated = Set(
+            outdatedCasksOutput
+                .components(separatedBy: .newlines)
+                .map { $0.trimmingCharacters(in: .whitespaces) }
+        )
+        return requested.filter { outdated.contains($0) }
+    }
+
+    /// One `brew upgrade` per cask, so `SUDO_ASKPASS` only ever reaches the
+    /// cask being upgraded. `--greedy` matches the per-row Update: a named
+    /// `auto_updates` cask is otherwise skipped as "nothing to do".
+    nonisolated static func adminUpgradeArgumentBatches(caskNames: [String]) -> [[String]] {
+        caskNames.map { ["upgrade", "--cask", "--greedy", $0] }
+    }
+
     static func parseUpgradeOutput(_ output: String) -> [UpgradedPackage] {
         var packages: [UpgradedPackage] = []
         var indexByName: [String: Int] = [:]  // Track captured packages to avoid duplicates
@@ -959,14 +978,18 @@ final class BrewService: @unchecked Sendable {
     // MARK: - Admin Privilege Execution
 
     /// Run one or more brew invocations under a single admin password
-    /// prompt. The password is requested once (per attempt), written to the
-    /// askpass transport file, and reused across every batch. Previously
-    /// each batch prompted separately, so greedy mode (regular + greedy
-    /// batches) asked the user for their password twice per run.
+    /// prompt. The password is requested once (per attempt) and reused across
+    /// every batch, so greedy mode or several casks don't each ask for it.
+    ///
+    /// The password never touches the disk. `AskpassServer` holds it in
+    /// memory and hands it only to sudo running inside the brew process
+    /// currently in flight; the script `SUDO_ASKPASS` points at prints
+    /// nothing for anyone else.
     ///
     /// On a wrong password only the failing batch is retried (up to
     /// `maxAttempts` prompts total); batches that already completed are
-    /// never re-run.
+    /// never re-run. A batch that fails for any other reason doesn't stop
+    /// the rest; the failures are thrown together at the end.
     private func runCommandsWithAdmin(
         _ command: String,
         argumentBatches: [[String]],
@@ -977,22 +1000,16 @@ final class BrewService: @unchecked Sendable {
         var attempt = 0
         var errorMessageForRetry: String? = nil
         var outputs: [String] = []
+        var failures: [String] = []
         var batchIndex = 0
 
         while attempt < maxAttempts {
             attempt += 1
 
-            // Sequential design: prompt the user FIRST, then write the
-            // password to a per-attempt file (mode 0600) and spawn brew. The
-            // earlier parallel design (Task wrapping brew while NSAlert blocks
-            // the main actor) had multiple bugs — NSAlert.runModal blocking
-            // the main actor before brew could spawn, and FIFO-based password
-            // transport deadlocking because brew makes multiple sudo calls
-            // per cask install (preflight, install, postflight) and a FIFO
-            // only delivers its contents once. A regular file with the
-            // password lets every sudo invocation cat the same file and get
-            // the same password — wrong-password attempts cleanly exhaust
-            // sudo's 3-strike limit and brew exits with auth-failure output.
+            // Prompt first, then spawn brew. Running brew while the prompt
+            // is up blocked the main actor, and brew asks sudo several times
+            // per cask install (preflight, install, postflight), so the
+            // password has to stay available for the whole batch.
             let prompt = await AdminPasswordPromptWindowController.present(
                 forPackage: packageName,
                 errorMessage: errorMessageForRetry
@@ -1006,28 +1023,18 @@ final class BrewService: @unchecked Sendable {
                 password = p
             }
 
-            let uuid = UUID().uuidString
-            let passwordFile = NSTemporaryDirectory() + "topoff-pw-\(uuid).txt"
-            let scriptPath = NSTemporaryDirectory() + "topoff-askpass-\(uuid).sh"
-
-            try password.write(toFile: passwordFile, atomically: true, encoding: .utf8)
-            try FileManager.default.setAttributes(
-                [.posixPermissions: 0o600],
-                ofItemAtPath: passwordFile
-            )
-            try Self.writeAskpassScript(toPath: scriptPath, fifoPath: passwordFile)
-            defer {
-                try? FileManager.default.removeItem(atPath: passwordFile)
-                try? FileManager.default.removeItem(atPath: scriptPath)
+            let processHolder = ProcessHolder()
+            let askpass = try AskpassServer(password: password) { peer in
+                AskpassServer.isSudoInsideProcess(peer, rootPID: processHolder.processIdentifier)
             }
+            defer { askpass.stop() }
 
             // Watcher: if we see sudo's "Sorry, try again" or similar
             // auth-failure output, kill brew immediately so the retry kicks
             // in fast. If the watcher misses the marker (brew might swallow
             // sudo's stderr), we still fall back to brew's natural exit —
             // sudo's 3-retry limit ensures brew exits with auth output.
-            let processHolder = ProcessHolder()
-            let env = ["SUDO_ASKPASS": scriptPath]
+            let env = ["SUDO_ASKPASS": askpass.scriptPath]
             let userOnLine = onLine
             let watchedOnLine: @Sendable (String) -> Void = { line in
                 if Self.isAuthFailure(line) {
@@ -1042,15 +1049,22 @@ final class BrewService: @unchecked Sendable {
                 // that completed before a wrong-password failure are not
                 // re-run on the next attempt.
                 while batchIndex < argumentBatches.count {
-                    let output = try await runCommandStreaming(
-                        command,
-                        arguments: argumentBatches[batchIndex],
-                        extraEnvironment: env,
-                        onProcess: { processHolder.set($0) },
-                        onLine: watchedOnLine
-                    )
-                    outputs.append(output)
+                    do {
+                        let output = try await runCommandStreaming(
+                            command,
+                            arguments: argumentBatches[batchIndex],
+                            extraEnvironment: env,
+                            onProcess: { processHolder.set($0) },
+                            onLine: watchedOnLine
+                        )
+                        outputs.append(output)
+                    } catch let BrewError.commandFailed(output) where !Self.isAuthFailure(output) {
+                        failures.append(output)
+                    }
                     batchIndex += 1
+                }
+                if !failures.isEmpty {
+                    throw BrewError.commandFailed(failures.joined(separator: "\n"))
                 }
                 return outputs
             } catch let BrewError.commandFailed(output) where Self.isAuthFailure(output) && attempt < maxAttempts {
@@ -1082,47 +1096,6 @@ final class BrewService: @unchecked Sendable {
         return outputs.first ?? ""
     }
 
-    /// Open the FIFO for writing and push a single line of content. Uses a
-    /// nonblocking open so we don't hang if the brew subprocess finished before
-    /// invoking askpass (in which case there's no reader and our write has
-    /// nowhere to land — silent no-op is fine, the runTask will return brew's
-    /// normal output).
-    ///
-    /// Async + `Task.sleep` is required: this is called from a `@MainActor`
-    /// context and a synchronous `usleep` would freeze the UI on the common
-    /// path where brew doesn't actually invoke sudo (formula upgrades, cached
-    /// sudo credentials), in which case askpass is never called, no reader
-    /// appears, and the whole 5-second poll budget is spent waiting.
-    ///
-    /// Known limitation: if the FIFO write times out AND askpass invokes
-    /// later, the brew subprocess can hang waiting on a writer that never
-    /// arrives. The 5-second budget is generous enough that this is a corner
-    /// case (sudo invokes askpass within ~50 ms in practice), and the user
-    /// can quit the app to recover.
-    private static func writeToFIFO(fifoPath: String, content: String) async throws {
-        var fd: Int32 = -1
-        for _ in 0..<50 {                          // up to 5 s total
-            fd = open(fifoPath, O_WRONLY | O_NONBLOCK)
-            if fd >= 0 { break }
-            if errno != ENXIO {                    // ENXIO = no reader yet
-                throw NSError(
-                    domain: NSPOSIXErrorDomain,
-                    code: Int(errno),
-                    userInfo: [NSLocalizedDescriptionKey: "Failed to open FIFO for write: \(fifoPath)"]
-                )
-            }
-            try? await Task.sleep(nanoseconds: 100_000_000)   // 0.1 s, yields the actor
-        }
-        guard fd >= 0 else { return }              // reader never appeared — no-op
-        defer { close(fd) }
-
-        if let data = content.data(using: .utf8) {
-            data.withUnsafeBytes { rawBuffer in
-                _ = write(fd, rawBuffer.baseAddress, rawBuffer.count)
-            }
-        }
-    }
-
     func updateAllWithAdmin(
         greedy: Bool = false,
         packages: [OutdatedPackage],
@@ -1136,24 +1109,38 @@ final class BrewService: @unchecked Sendable {
             return UpdateResult(packages: [], timestamp: Date())
         }
 
-        // One admin prompt for the whole run: in greedy mode the regular and
-        // greedy batches share a single password prompt instead of each
-        // batch presenting its own.
-        let names = packages.map(\.name)
+        // This runs after a normal update hit a permission error, so
+        // everything that could update without admin rights already has.
+        // Only casks can need the password (Homebrew refuses to run formulae
+        // as root), so retry just the casks still outdated, one brew process
+        // each. The password is then only reachable from the cask that needs
+        // it, never from formulae or other casks in the same run.
+        var outdatedCaskArgs = ["outdated", "--cask", "--quiet"]
+        if greedy {
+            outdatedCaskArgs.append("--greedy")
+        }
+        let outdatedCasks = try await runCommand(brewPath, arguments: outdatedCaskArgs)
+        let caskNames = Self.namesNeedingAdminRetry(requested: packages.map(\.name), outdatedCasksOutput: outdatedCasks)
+        guard !caskNames.isEmpty else {
+            throw BrewError.commandFailed("Some packages couldn't be updated, and none of them are apps that need administrator access.")
+        }
+
+        // One admin prompt covers every cask in the list.
         let upgradeOutputs = try await runCommandsWithAdmin(
             brewPath,
-            argumentBatches: Self.upgradeArgumentBatches(greedy: greedy, packageNames: names),
-            packageName: nil,
+            argumentBatches: Self.adminUpgradeArgumentBatches(caskNames: caskNames),
+            packageName: caskNames.count == 1 ? caskNames[0] : nil,
             onLine: onProgress
         )
 
         let combined = upgradeOutputs.joined(separator: "\n")
-        let upgraded = Self.fillingUnknownVersions(Self.parseUpgradeOutput(combined), from: packages)
+        let retried = packages.filter { caskNames.contains($0.name) }
+        let upgraded = Self.fillingUnknownVersions(Self.parseUpgradeOutput(combined), from: retried)
         return UpdateResult(
             packages: try await appendingReinstalledRefusedCasks(
                 to: upgraded,
                 output: combined,
-                candidates: packages,
+                candidates: retried,
                 useAdmin: true,
                 onProgress: onProgress
             ),
@@ -1185,7 +1172,7 @@ final class BrewService: @unchecked Sendable {
         )
     }
 
-    // MARK: - Askpass / FIFO
+    // MARK: - Admin helpers
 
     /// Thread-safe holder for a running Process. The `runCommand` /
     /// `runCommandStreaming` callbacks invoke `set` from the background Task's
@@ -1199,6 +1186,16 @@ final class BrewService: @unchecked Sendable {
             lock.lock()
             self.process = process
             lock.unlock()
+        }
+
+        /// PID of the brew process currently running, if any. The askpass
+        /// server only answers sudo running inside this process.
+        var processIdentifier: pid_t? {
+            lock.lock()
+            let p = process
+            lock.unlock()
+            guard let p, p.isRunning else { return nil }
+            return p.processIdentifier
         }
 
         /// Send SIGKILL to the process and its process group. SIGTERM
@@ -1217,9 +1214,6 @@ final class BrewService: @unchecked Sendable {
         }
     }
 
-    /// Cancel sentinel that the askpass script recognizes as "user cancelled".
-    static let askpassCancelSentinel = "__TOPOFF_CANCEL__"
-
     /// Detect sudo's "wrong password" output patterns. Used by the admin retry
     /// loop to decide whether to re-prompt vs. surface the error. Nonisolated
     /// because it's a pure string check called from the background `runTask`
@@ -1230,50 +1224,5 @@ final class BrewService: @unchecked Sendable {
             || lower.contains("incorrect password")
             || lower.contains("authentication failure")
             || lower.contains("authentication failed")
-    }
-
-    /// Create a named pipe (FIFO) at `path` with mode 0600. The FIFO is the
-    /// transport for the user's password from TopOff to sudo's askpass program.
-    /// Throws on any mkfifo failure.
-    static func makeFIFO(at path: String) throws {
-        let result = mkfifo(path, 0o600)
-        if result != 0 {
-            let errnoCopy = errno
-            throw NSError(
-                domain: NSPOSIXErrorDomain,
-                code: Int(errnoCopy),
-                userInfo: [NSLocalizedDescriptionKey: "mkfifo failed at \(path)"]
-            )
-        }
-    }
-
-    /// Write the askpass shell script that, when invoked by sudo, reads exactly
-    /// one line from the FIFO and either prints it (success) or exits 1 (cancel).
-    /// The FIFO path is baked into the script literal — no env-var dependence.
-    /// Both interpolated values are shell-single-quote-escaped so a hostile
-    /// path or sentinel can never break out of the quoted literal.
-    static func writeAskpassScript(toPath scriptPath: String, fifoPath: String) throws {
-        let safeFifo = shellSingleQuoteEscape(fifoPath)
-        let safeSentinel = shellSingleQuoteEscape(askpassCancelSentinel)
-        let script = """
-        #!/bin/sh
-        RESULT=$(cat \(safeFifo))
-        if [ "$RESULT" = \(safeSentinel) ]; then
-          exit 1
-        fi
-        printf '%s\\n' "$RESULT"
-        """
-        try script.write(toFile: scriptPath, atomically: true, encoding: .utf8)
-        try FileManager.default.setAttributes(
-            [.posixPermissions: 0o700],
-            ofItemAtPath: scriptPath
-        )
-    }
-
-    /// Wrap `value` in single quotes for safe interpolation into a shell
-    /// command. Any embedded `'` is escaped using the canonical
-    /// `'\''` (close, literal apostrophe, reopen) pattern.
-    private static func shellSingleQuoteEscape(_ value: String) -> String {
-        "'" + value.replacingOccurrences(of: "'", with: "'\\''") + "'"
     }
 }
