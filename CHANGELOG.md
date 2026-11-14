@@ -1,5 +1,20 @@
 # Changelog
 
+## v2.2.2 — November 2026
+
+### Fixes
+
+- **Safer handling of your admin password:** when an app update needs administrator access, TopOff used to keep the password you typed in a temporary file for the rest of the update, where install scripts from other packages in the same update could read it. TopOff now holds it in memory only, hands it to the macOS admin prompt for the one app that needs it, and refuses every other request. Leftover password files from earlier versions are deleted when TopOff starts. Thanks to Liam Williams for reporting this privately.
+- **Admin retries cover only the apps that need them:** if an update hits a permission error, TopOff now retries just the apps still waiting, one at a time, instead of running the whole list again with your password.
+
+### Notes
+
+- If you're on 2.1 or later, TopOff offers this update automatically. If you've ever entered your password in TopOff, please update.
+- Existing settings and history carry over; no manual migration needed.
+- Supports macOS 14 and later. Universal binary for Apple Silicon and Intel.
+
+---
+
 ## v2.2.1 — November 2026
 
 ### Fixes
