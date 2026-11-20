@@ -55,12 +55,21 @@ enum BrewError: Error, LocalizedError {
 }
 
 struct OutdatedPackage: Identifiable, Codable, Equatable {
+    /// Formula or cask: the release cooldown can apply to casks only.
+    enum Kind: String, Codable {
+        case formula
+        case cask
+    }
+
     var id: String { name }
     var hasInterruptedCaskUpgrade: Bool { currentVersion.contains(".upgrading") }
 
     let name: String
     let currentVersion: String
     let latestVersion: String
+    /// Which half of the outdated check listed it (see `checkOutdated`), or
+    /// nil for a package that didn't come from a check.
+    var kind: Kind? = nil
 }
 
 struct UpgradedPackage: Identifiable, Codable {
@@ -240,6 +249,11 @@ final class BrewService: @unchecked Sendable {
         self.brewPath = Self.findBrewPath()
     }
 
+    /// For tests: runs the brew at `brewPath`, such as a script standing in for it.
+    init(brewPath: String?) {
+        self.brewPath = brewPath
+    }
+
     static func findBrewPath() -> String? {
         #if DEBUG
         // Demo/testing hook: lets a debug build talk to a stand-in brew
@@ -274,13 +288,36 @@ final class BrewService: @unchecked Sendable {
         // Run brew update first to refresh package info
         _ = try await runCommand(brewPath, arguments: ["update"])
 
-        // Then check what's outdated with verbose output for version info
-        var outdatedArgs = ["outdated", "--verbose"]
-        if greedy {
-            outdatedArgs.append("--greedy")
+        // Then check what's outdated with verbose output for version info:
+        // formulae, then casks, the order one `brew outdated` lists them in,
+        // asked for separately so each package's kind is known for certain
+        do {
+            var packages: [OutdatedPackage] = []
+            for kind in [OutdatedPackage.Kind.formula, .cask] {
+                let output = try await runCommand(brewPath, arguments: Self.outdatedArguments(kind: kind, greedy: greedy))
+                packages += Self.parseOutdatedVerbose(output, kind: kind)
+            }
+            return packages
+        } catch {
+            // If that fails (Homebrew before 2.4.9 has no --formula or
+            // --cask), check both at once as before. The kinds are then
+            // unknown, which a release cooldown for casks only holds back.
+            let output = try await runCommand(brewPath, arguments: Self.outdatedArguments(kind: nil, greedy: greedy))
+            return Self.parseOutdatedVerbose(output)
         }
-        let output = try await runCommand(brewPath, arguments: outdatedArgs)
-        return Self.parseOutdatedVerbose(output)
+    }
+
+    /// `brew outdated` arguments for one kind of package, or for both when
+    /// `kind` is nil. `--greedy` only changes which casks are listed.
+    static func outdatedArguments(kind: OutdatedPackage.Kind?, greedy: Bool) -> [String] {
+        switch kind {
+        case .formula:
+            return ["outdated", "--verbose", "--formula"]
+        case .cask:
+            return ["outdated", "--verbose", "--cask"] + (greedy ? ["--greedy"] : [])
+        case nil:
+            return ["outdated", "--verbose"] + (greedy ? ["--greedy"] : [])
+        }
     }
 
     func updateAll(
@@ -537,11 +574,14 @@ final class BrewService: @unchecked Sendable {
         )
     }
 
-    nonisolated static func parseOutdatedVerbose(_ output: String) -> [OutdatedPackage] {
+    nonisolated static func parseOutdatedVerbose(_ output: String, kind: OutdatedPackage.Kind? = nil) -> [OutdatedPackage] {
         // brew outdated --verbose outputs lines like:
         // node (20.1.0) < 22.0.0
         // python@3.12 (3.11.4) < 3.12.1
         // google-chrome (146.0.7680.80) != 148.0.7778.168
+        // The separator hints at the kind but doesn't prove it (a cask
+        // compared against a minimum version prints " < "), so the kind
+        // comes from the caller, which asked for formulae or casks only.
         var packages: [OutdatedPackage] = []
         let lines = output.components(separatedBy: .newlines)
 
@@ -569,11 +609,11 @@ final class BrewService: @unchecked Sendable {
                let parenClose = leftSide.lastIndex(of: ")") {
                 let name = String(leftSide[leftSide.startIndex..<parenOpen]).trimmingCharacters(in: .whitespaces)
                 let currentVersion = String(leftSide[leftSide.index(after: parenOpen)..<parenClose])
-                packages.append(OutdatedPackage(name: name, currentVersion: currentVersion, latestVersion: latestVersion))
+                packages.append(OutdatedPackage(name: name, currentVersion: currentVersion, latestVersion: latestVersion, kind: kind))
             } else {
                 // Fallback: treat everything before " < " as name, no current version
                 let name = leftSide.trimmingCharacters(in: .whitespaces)
-                packages.append(OutdatedPackage(name: name, currentVersion: "?", latestVersion: latestVersion))
+                packages.append(OutdatedPackage(name: name, currentVersion: "?", latestVersion: latestVersion, kind: kind))
             }
         }
 

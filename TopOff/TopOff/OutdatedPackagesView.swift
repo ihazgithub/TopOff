@@ -7,7 +7,8 @@ struct OutdatedPackagesView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        let packages = viewModel.visibleOutdatedPackages
+        // Ready packages first; those still in the release cooldown follow
+        let packages = viewModel.readyOutdatedPackages + viewModel.cooldownOutdatedPackages
 
         VStack(spacing: 0) {
             Text("Outdated Packages")
@@ -43,7 +44,7 @@ struct OutdatedPackagesView: View {
                         .lineLimit(1)
                         .truncationMode(.tail)
                 } else if !packages.isEmpty {
-                    Text("\(packages.count) package\(packages.count == 1 ? "" : "s")")
+                    Text(packageCount(packages.count, inCooldown: viewModel.cooldownOutdatedPackages.count))
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
@@ -53,7 +54,7 @@ struct OutdatedPackagesView: View {
                 Button(viewModel.greedyModeEnabled ? "Update All (Greedy)" : "Update All") {
                     viewModel.updateAll(greedy: viewModel.greedyModeEnabled)
                 }
-                .disabled(packages.isEmpty || viewModel.isRunning)
+                .disabled(viewModel.readyOutdatedPackages.isEmpty || viewModel.isRunning)
 
                 Button("Done") {
                     dismiss()
@@ -67,11 +68,13 @@ struct OutdatedPackagesView: View {
 
     @ViewBuilder
     private func packageRow(_ package: OutdatedPackage) -> some View {
+        let daysLeft = viewModel.cooldownDaysRemaining(for: package)
+
         HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(package.name)
                     .fontWeight(.medium)
-                Text(versionTransition(package))
+                Text(versionTransition(package, daysLeft: daysLeft))
                     .font(.callout)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -85,11 +88,13 @@ struct OutdatedPackagesView: View {
                     .controlSize(.small)
             }
 
-            Button("Update") {
+            Button(daysLeft == nil ? "Update" : "Update Now") {
                 viewModel.upgradePackage(package)
             }
             .disabled(viewModel.isRunning)
-            .help("Update \(package.name) now")
+            .help(daysLeft == nil
+                  ? "Update \(package.name) now"
+                  : "Update \(package.name) now instead of waiting out the release cooldown")
 
             // Skip stays available during updates, matching the menu.
             Button("Skip") {
@@ -110,9 +115,15 @@ struct OutdatedPackagesView: View {
         return item.state == .updating || item.state == .repairing
     }
 
-    private func versionTransition(_ package: OutdatedPackage) -> String {
+    private func packageCount(_ count: Int, inCooldown: Int) -> String {
+        let total = "\(count) package\(count == 1 ? "" : "s")"
+        return inCooldown > 0 ? "\(total), \(inCooldown) in cooldown" : total
+    }
+
+    private func versionTransition(_ package: OutdatedPackage, daysLeft: Int?) -> String {
         let from = DisplayVersion.abbreviate(package.currentVersion)
         let to   = DisplayVersion.abbreviate(package.latestVersion)
-        return "\(from) → \(to)"
+        guard let daysLeft else { return "\(from) → \(to)" }
+        return "\(from) → \(to) · available in \(ReleaseCooldown.dayCount(daysLeft))"
     }
 }

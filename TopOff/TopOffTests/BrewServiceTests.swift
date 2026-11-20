@@ -297,6 +297,112 @@ final class BrewServiceTests: XCTestCase {
         XCTAssertEqual(packages[2].latestVersion, "22.0.0")
     }
 
+    func testOutdatedCheckAsksForFormulaeAndCasksSeparately() {
+        XCTAssertEqual(
+            BrewService.outdatedArguments(kind: .formula, greedy: false),
+            ["outdated", "--verbose", "--formula"]
+        )
+        XCTAssertEqual(
+            BrewService.outdatedArguments(kind: .formula, greedy: true),
+            ["outdated", "--verbose", "--formula"]
+        )
+        XCTAssertEqual(
+            BrewService.outdatedArguments(kind: .cask, greedy: false),
+            ["outdated", "--verbose", "--cask"]
+        )
+        XCTAssertEqual(
+            BrewService.outdatedArguments(kind: .cask, greedy: true),
+            ["outdated", "--verbose", "--cask", "--greedy"]
+        )
+        // Both at once, as TopOff 2.2 asked, for the fallback
+        XCTAssertEqual(
+            BrewService.outdatedArguments(kind: nil, greedy: true),
+            ["outdated", "--verbose", "--greedy"]
+        )
+    }
+
+    /// Writes a shell script that stands in for brew, for `BrewService(brewPath:)`.
+    private func makeFakeBrew(_ body: String) throws -> String {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("topoff-tests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        addTeardownBlock { try? FileManager.default.removeItem(at: directory) }
+
+        let path = directory.appendingPathComponent("brew").path
+        try "#!/bin/sh\n\(body)\n".write(toFile: path, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: path)
+        return path
+    }
+
+    func testOutdatedCheckTellsFormulaeFromCasks() async throws {
+        let brew = try makeFakeBrew("""
+        case "$*" in
+          "outdated --verbose --formula") echo "node (20.1.0) < 22.0.0" ;;
+          "outdated --verbose --cask") echo "firefox (130.0) != 131.0" ;;
+        esac
+        """)
+
+        let packages = try await BrewService(brewPath: brew).checkOutdated()
+
+        XCTAssertEqual(packages.map(\.name), ["node", "firefox"])
+        XCTAssertEqual(packages.map(\.kind), [.formula, .cask])
+    }
+
+    func testOutdatedCheckFallsBackToOneCallWhenBrewLacksTheKindFlags() async throws {
+        // Homebrew before 2.4.9 rejects --formula and --cask
+        let brew = try makeFakeBrew("""
+        case "$*" in
+          *--formula*|*--cask*) echo "Error: invalid option: $3" >&2; exit 1 ;;
+          "outdated --verbose") printf 'node (20.1.0) < 22.0.0\\nfirefox (130.0) != 131.0\\n' ;;
+        esac
+        """)
+
+        let packages = try await BrewService(brewPath: brew).checkOutdated()
+
+        XCTAssertEqual(packages.map(\.name), ["node", "firefox"])
+        XCTAssertEqual(packages.map(\.kind), [nil, nil], "unknown kinds, which a casks-only cooldown holds back")
+    }
+
+    func testOutdatedCheckStillFailsWhenBrewOutdatedFails() async throws {
+        let brew = try makeFakeBrew("""
+        case "$*" in
+          outdated*) echo "Error: something broke" >&2; exit 1 ;;
+        esac
+        """)
+
+        do {
+            _ = try await BrewService(brewPath: brew).checkOutdated()
+            XCTFail("a failing brew outdated should fail the check, as it did before")
+        } catch {
+            // Expected: the fallback's own failure is what's reported
+        }
+    }
+
+    func testParseOutdatedVerboseTagsPackagesWithTheKindAskedFor() {
+        // A cask compared against a minimum version prints " < " like a
+        // formula, so the kind comes from which half of the check listed
+        // a package, never from its separator.
+        let casks = BrewService.parseOutdatedVerbose("""
+        firefox (130.0) < 131.0
+        google-chrome (146.0.7680.80) != 148.0.7778.168
+        """, kind: .cask)
+        let formulae = BrewService.parseOutdatedVerbose("node (20.1.0) < 22.0.0", kind: .formula)
+
+        XCTAssertEqual(casks.map(\.name), ["firefox", "google-chrome"])
+        XCTAssertEqual(casks.map(\.kind), [.cask, .cask])
+        XCTAssertEqual(formulae.map(\.kind), [.formula])
+        XCTAssertNil(BrewService.parseOutdatedVerbose("node (20.1.0) < 22.0.0").first?.kind)
+    }
+
+    func testOutdatedPackageSavedBeforeKindsDecodesWithUnknownKind() throws {
+        let saved = Data(#"{"name":"node","currentVersion":"20.1.0","latestVersion":"22.0.0"}"#.utf8)
+
+        let package = try JSONDecoder().decode(OutdatedPackage.self, from: saved)
+
+        XCTAssertEqual(package.name, "node")
+        XCTAssertNil(package.kind)
+    }
+
     func testOutdatedPackageMarksInterruptedCaskUpgradeAsRepairable() {
         let package = OutdatedPackage(
             name: "duckduckgo",
