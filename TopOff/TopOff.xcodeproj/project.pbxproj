@@ -10,6 +10,8 @@
 		2537D5CD9BDCC8E725557CEF /* HistoryGrouping.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B6F8F7F3E364B160D91BFC /* HistoryGrouping.swift */; };
 		4CA6D63D54CD9D41ADB88E4A /* BrewErrorClassificationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E82337D72B586027C4FCC6C /* BrewErrorClassificationTests.swift */; };
 		51FDFB24EAFDEFE9D1FDAA1A /* BrewError+Classification.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8A2E360C5F57BAF9697D3B4 /* BrewError+Classification.swift */; };
+		5E8A1C3F7B2D4096A1E3C5F0 /* ReleaseCooldown.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E8A1C3F7B2D4096A1E3C5F1 /* ReleaseCooldown.swift */; };
+		5E8A1C3F7B2D4096A1E3C5F2 /* ReleaseCooldownTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E8A1C3F7B2D4096A1E3C5F3 /* ReleaseCooldownTests.swift */; };
 		736074C5941826D1C8AAE572 /* MenuBarViewModelSkipListTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7C5AE0699146D3EB24865A6 /* MenuBarViewModelSkipListTests.swift */; };
 		7561604DB435D5D45D3B71FE /* HistoryGroupingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81102A6143014EBF0C9A9508 /* HistoryGroupingTests.swift */; };
 		7C2D0948902A531A21ADF198 /* AskpassScriptTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50ED517EFA5118084DB190DB /* AskpassScriptTests.swift */; };
@@ -47,6 +49,8 @@
 		7D3E1A5C9B2F4E6A8C0D1F24 /* OutdatedPackagesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutdatedPackagesView.swift; sourceTree = "<group>"; };
 		4E2D3B324E165ECD0159C419 /* SkippedPackagesView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SkippedPackagesView.swift; sourceTree = "<group>"; };
 		50ED517EFA5118084DB190DB /* AskpassScriptTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AskpassScriptTests.swift; sourceTree = "<group>"; };
+		5E8A1C3F7B2D4096A1E3C5F1 /* ReleaseCooldown.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReleaseCooldown.swift; sourceTree = "<group>"; };
+		5E8A1C3F7B2D4096A1E3C5F3 /* ReleaseCooldownTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReleaseCooldownTests.swift; sourceTree = "<group>"; };
 		602F71524F09E1230078D225 /* DisplayVersion.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DisplayVersion.swift; sourceTree = "<group>"; };
 		7E82337D72B586027C4FCC6C /* BrewErrorClassificationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BrewErrorClassificationTests.swift; sourceTree = "<group>"; };
 		81102A6143014EBF0C9A9508 /* HistoryGroupingTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HistoryGroupingTests.swift; sourceTree = "<group>"; };
@@ -120,6 +124,7 @@
 				A8A2E360C5F57BAF9697D3B4 /* BrewError+Classification.swift */,
 				18FD970D70069AC5CA2EA99B /* AdminPasswordPromptWindow.swift */,
 				A1B6F8F7F3E364B160D91BFC /* HistoryGrouping.swift */,
+				5E8A1C3F7B2D4096A1E3C5F1 /* ReleaseCooldown.swift */,
 			);
 			path = TopOff;
 			sourceTree = "<group>";
@@ -142,6 +147,7 @@
 				7E82337D72B586027C4FCC6C /* BrewErrorClassificationTests.swift */,
 				50ED517EFA5118084DB190DB /* AskpassScriptTests.swift */,
 				81102A6143014EBF0C9A9508 /* HistoryGroupingTests.swift */,
+				5E8A1C3F7B2D4096A1E3C5F3 /* ReleaseCooldownTests.swift */,
 			);
 			path = TopOffTests;
 			sourceTree = "<group>";
@@ -266,6 +272,7 @@
 				51FDFB24EAFDEFE9D1FDAA1A /* BrewError+Classification.swift in Sources */,
 				E7ADB7B4A926EB060F6E9A47 /* AdminPasswordPromptWindow.swift in Sources */,
 				2537D5CD9BDCC8E725557CEF /* HistoryGrouping.swift in Sources */,
+				5E8A1C3F7B2D4096A1E3C5F0 /* ReleaseCooldown.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -279,6 +286,7 @@
 				4CA6D63D54CD9D41ADB88E4A /* BrewErrorClassificationTests.swift in Sources */,
 				7C2D0948902A531A21ADF198 /* AskpassScriptTests.swift in Sources */,
 				7561604DB435D5D45D3B71FE /* HistoryGroupingTests.swift in Sources */,
+				5E8A1C3F7B2D4096A1E3C5F2 /* ReleaseCooldownTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

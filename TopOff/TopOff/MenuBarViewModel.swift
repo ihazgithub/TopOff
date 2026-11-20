@@ -116,6 +116,36 @@ final class MenuBarViewModel: ObservableObject {
             saveRememberedSkipList()
         }
     }
+    /// Days a package's new version must have been pending before TopOff
+    /// offers it. 0, the default, turns the release cooldown off.
+    @Published var releaseCooldownDays: Int {
+        didSet {
+            defaults.set(releaseCooldownDays, forKey: ReleaseCooldown.daysUserDefaultsKey)
+            // A new cooldown can move packages between ready and in cooldown
+            if !isRunning {
+                updateIconState()
+            }
+        }
+    }
+    /// Which packages the release cooldown holds back: casks only, the
+    /// default, or all packages.
+    @Published var releaseCooldownScope: ReleaseCooldown.Scope {
+        didSet {
+            releaseCooldownScope.save(in: defaults)
+            if !isRunning {
+                updateIconState()
+            }
+        }
+    }
+    /// When each outdated package's pending version was first seen, which
+    /// the release cooldown counts from. Kept for every package, while the
+    /// cooldown is off or leaves a package out too, so turning it on or
+    /// widening it doesn't restart any pending version from zero.
+    @Published private(set) var firstSeenVersions: [String: FirstSeenVersion] {
+        didSet {
+            saveFirstSeenVersions()
+        }
+    }
 
     @Published var spinnerFrame: NSImage?
     @Published var updateHistory: [UpdateResult] = [] {
@@ -126,6 +156,7 @@ final class MenuBarViewModel: ObservableObject {
 
     private let defaults: UserDefaults
     private let loginItemManager: LaunchAtLoginManaging
+    private let now: () -> Date
     private let brewService = BrewService()
     private let notificationManager = NotificationManager.shared
     private let networkMonitor = NetworkMonitor()
@@ -138,10 +169,12 @@ final class MenuBarViewModel: ObservableObject {
     init(
         skipInitialChecks: Bool = false,
         defaults: UserDefaults = .standard,
-        loginItemManager: LaunchAtLoginManaging = SMAppServiceLaunchAtLogin()
+        loginItemManager: LaunchAtLoginManaging = SMAppServiceLaunchAtLogin(),
+        now: @escaping () -> Date = { Date() }
     ) {
         self.defaults = defaults
         self.loginItemManager = loginItemManager
+        self.now = now
         self.launchAtLogin = defaults.bool(forKey: "launchAtLogin")
         self.checkInterval = defaults.object(forKey: "checkInterval") as? TimeInterval ?? 14400
         // Default to true for auto cleanup — UserDefaults.bool returns false if key doesn't exist
@@ -160,6 +193,9 @@ final class MenuBarViewModel: ObservableObject {
             self.notificationsEnabled = defaults.bool(forKey: "notificationsEnabled")
         }
         self.rememberedSkipList = Self.loadRememberedSkipList(from: defaults)
+        self.releaseCooldownDays = ReleaseCooldown.storedDays(in: defaults)
+        self.releaseCooldownScope = ReleaseCooldown.Scope.stored(in: defaults)
+        self.firstSeenVersions = Self.loadFirstSeenVersions(from: defaults)
         spinnerFrames = Self.generateSpinnerFrames()
         loadUpdateHistory()
         defaults.removeObject(forKey: "packagesNeedingAttention")
@@ -186,6 +222,31 @@ final class MenuBarViewModel: ObservableObject {
         return outdatedPackages.filter { !allSkipped.contains($0.name) }
     }
 
+    /// Visible packages TopOff offers to update: those the release cooldown
+    /// doesn't hold back (all of them while it's off, and formulae while it
+    /// applies to casks only) and those whose new version has outlasted it.
+    /// These are what Update All upgrades and the icon shows.
+    var readyOutdatedPackages: [OutdatedPackage] {
+        visibleOutdatedPackages.filter { cooldownDaysRemaining(for: $0) == nil }
+    }
+
+    /// Visible packages whose new version is still in the release cooldown.
+    /// They stay listed, with Update Now for an urgent fix.
+    var cooldownOutdatedPackages: [OutdatedPackage] {
+        visibleOutdatedPackages.filter { cooldownDaysRemaining(for: $0) != nil }
+    }
+
+    /// Whole days until `package` is offered, or nil when it can be updated now.
+    func cooldownDaysRemaining(for package: OutdatedPackage) -> Int? {
+        ReleaseCooldown.daysRemaining(
+            for: package,
+            cooldownDays: releaseCooldownDays,
+            scope: releaseCooldownScope,
+            firstSeen: firstSeenVersions,
+            now: now()
+        )
+    }
+
     /// True when the menu should render the subtle "All packages up to date"
     /// confirmation row — there are no outdated packages and at least one
     /// successful check has completed since launch.
@@ -205,7 +266,7 @@ final class MenuBarViewModel: ObservableObject {
             do {
                 let shouldCheckGreedy = greedy || greedyModeEnabled
                 let refreshedOutdatedPackages = try await brewService.checkOutdated(greedy: shouldCheckGreedy)
-                outdatedPackages = refreshedOutdatedPackages
+                applyOutdatedCheck(refreshedOutdatedPackages, greedy: shouldCheckGreedy)
 
                 packagesToUpdate = updateCandidatePackages()
                 guard !packagesToUpdate.isEmpty else {
@@ -232,7 +293,7 @@ final class MenuBarViewModel: ObservableObject {
                     lastCleanupResult = try? await runAutoCleanup()
                 }
 
-                let remainingCount = visibleOutdatedPackages.count
+                let remainingCount = readyOutdatedPackages.count
                 if remainingCount == 0 {
                     statusMessage = nil
                     await showSuccessAnimation()
@@ -265,7 +326,7 @@ final class MenuBarViewModel: ObservableObject {
                             lastCleanupResult = try? await runAutoCleanup()
                         }
 
-                        let remainingCount = visibleOutdatedPackages.count
+                        let remainingCount = readyOutdatedPackages.count
                         if remainingCount == 0 {
                             statusMessage = nil
                             await showSuccessAnimation()
@@ -283,13 +344,13 @@ final class MenuBarViewModel: ObservableObject {
                     } catch {
                         statusMessage = nil
                         updateProgress = nil
-                        iconState = outdatedPackages.isEmpty ? .upToDate : .updatesAvailable
+                        updateIconStateAfterFailedUpdate()
                         notifyFailure(error)
                     }
                 } else {
                     statusMessage = nil
                     updateProgress = nil
-                    iconState = outdatedPackages.isEmpty ? .upToDate : .updatesAvailable
+                    updateIconStateAfterFailedUpdate()
                     notifyFailure(error)
                 }
             }
@@ -443,7 +504,7 @@ final class MenuBarViewModel: ObservableObject {
         var success = false
         do {
             let refreshedOutdatedPackages = try await brewService.checkOutdated(greedy: greedyModeEnabled)
-            outdatedPackages = refreshedOutdatedPackages
+            applyOutdatedCheck(refreshedOutdatedPackages, greedy: greedyModeEnabled)
             skippedPackages = []
             updateIconState()
             success = true
@@ -520,11 +581,18 @@ final class MenuBarViewModel: ObservableObject {
     }
 
     private func updateIconState() {
-        if visibleOutdatedPackages.isEmpty {
+        if readyOutdatedPackages.isEmpty {
             iconState = .upToDate
         } else {
             iconState = .updatesAvailable
         }
+    }
+
+    /// After a failed Update All the icon counts every outdated package,
+    /// skipped or not, as it always has, except those still in cooldown.
+    private func updateIconStateAfterFailedUpdate() {
+        let anyOffered = outdatedPackages.contains { cooldownDaysRemaining(for: $0) == nil }
+        iconState = anyOffered ? .updatesAvailable : .upToDate
     }
 
     private func beginUpdateProgress(for packages: [OutdatedPackage]) {
@@ -539,8 +607,24 @@ final class MenuBarViewModel: ObservableObject {
         updateProgress = items.isEmpty ? nil : UpdateProgressSnapshot(items: items)
     }
 
-    private func updateCandidatePackages() -> [OutdatedPackage] {
-        Self.uniquePackages(visibleOutdatedPackages)
+    /// What Update All upgrades, in the menu and in the Outdated Packages
+    /// window alike: the visible packages the release cooldown isn't holding
+    /// back, each once.
+    func updateCandidatePackages() -> [OutdatedPackage] {
+        Self.uniquePackages(readyOutdatedPackages)
+    }
+
+    /// Takes in a fresh `brew outdated` listing, first noting when each
+    /// pending version was first seen (see `ReleaseCooldown`). `greedy` says
+    /// whether the listing came from `brew outdated --greedy`.
+    func applyOutdatedCheck(_ packages: [OutdatedPackage], greedy: Bool) {
+        firstSeenVersions = ReleaseCooldown.firstSeenVersions(
+            after: packages,
+            previous: firstSeenVersions,
+            greedyCheck: greedy,
+            now: now()
+        )
+        outdatedPackages = packages
     }
 
     private func runAutoCleanup() async throws -> CleanupResult {
@@ -663,7 +747,7 @@ final class MenuBarViewModel: ObservableObject {
             lastUpdateResult = completedResult
             addToHistory(completedResult)
         }
-        outdatedPackages = refreshedOutdatedPackages
+        applyOutdatedCheck(refreshedOutdatedPackages, greedy: greedy || greedyModeEnabled)
         skippedPackages = []
 
         return completedResult
@@ -829,6 +913,20 @@ final class MenuBarViewModel: ObservableObject {
             return []
         }
         return Set(array)
+    }
+
+    private func saveFirstSeenVersions() {
+        if let data = try? JSONEncoder().encode(firstSeenVersions) {
+            defaults.set(data, forKey: "firstSeenVersions")
+        }
+    }
+
+    private static func loadFirstSeenVersions(from defaults: UserDefaults) -> [String: FirstSeenVersion] {
+        guard let data = defaults.data(forKey: "firstSeenVersions"),
+              let firstSeen = try? JSONDecoder().decode([String: FirstSeenVersion].self, from: data) else {
+            return [:]
+        }
+        return firstSeen
     }
 
 }

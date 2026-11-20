@@ -32,17 +32,33 @@ struct TopOffApp: App {
 
             // Outdated packages with version details
             if !viewModel.visibleOutdatedPackages.isEmpty {
-                let visible = viewModel.visibleOutdatedPackages
+                // Ready packages first; those still in the release cooldown follow
+                let visible = viewModel.readyOutdatedPackages + viewModel.cooldownOutdatedPackages
                 let displayPackages = Array(visible.prefix(5))
                 let overflow = visible.count - displayPackages.count
 
                 ForEach(displayPackages) { package in
-                    Menu(package.name) {
-                        Button("Update") {
-                            viewModel.upgradePackage(package)
+                    if let daysLeft = viewModel.cooldownDaysRemaining(for: package) {
+                        Menu("\(package.name) (in \(ReleaseCooldown.dayCount(daysLeft)))") {
+                            // A disabled line: when the release cooldown ends
+                            Text("Available in \(ReleaseCooldown.dayCount(daysLeft))")
+                            Divider()
+                            Button("Update Now") {
+                                viewModel.upgradePackage(package)
+                            }
+                            .help("Installs the new version now instead of waiting out the release cooldown, for an urgent fix.")
+                            Button("Skip") {
+                                viewModel.skipPackage(package)
+                            }
                         }
-                        Button("Skip") {
-                            viewModel.skipPackage(package)
+                    } else {
+                        Menu(package.name) {
+                            Button("Update") {
+                                viewModel.upgradePackage(package)
+                            }
+                            Button("Skip") {
+                                viewModel.skipPackage(package)
+                            }
                         }
                     }
                 }
@@ -182,6 +198,21 @@ struct TopOffApp: App {
                     Text("Every 12 Hours").tag(43200.0 as TimeInterval)
                     Text("Every 24 Hours").tag(86400.0 as TimeInterval)
                     Text("Manual Only").tag(0.0 as TimeInterval)
+                }
+
+                Picker("Release Cooldown", selection: $viewModel.releaseCooldownDays) {
+                    ForEach(ReleaseCooldown.dayChoices, id: \.self) { days in
+                        Text(days == 0 ? "Off" : "\(days) Days").tag(days)
+                    }
+                }
+                .help("Waits this many days after TopOff first sees a new version before offering it, so a bad or compromised release has time to be caught and pulled.")
+
+                if viewModel.releaseCooldownDays > 0 {
+                    Picker("Applies To", selection: $viewModel.releaseCooldownScope) {
+                        Text("Casks Only").tag(ReleaseCooldown.Scope.casksOnly)
+                        Text("All Packages").tag(ReleaseCooldown.Scope.allPackages)
+                    }
+                    .help("Casks download the vendor's own app, which Homebrew's review can't vouch for. Formulae are reviewed and built by Homebrew, and waiting would also hold back urgent fixes.")
                 }
 
                 Divider()
