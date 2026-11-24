@@ -34,6 +34,7 @@ If you use Homebrew, you have probably forgotten to run `brew update && brew upg
 - **Real-time progress** — See exactly which package is being updated as it happens — click the menu bar during updates to watch live
 - **Package details at a glance** — See outdated packages right in the menu, and open the full list with version changes in its own window
 - **Selective updates** — Update or skip individual packages
+- **Release cooldown**: Optionally wait 3 to 14 days before new versions are offered, so bad releases get caught before they reach you
 - **Greedy mode** — Optionally include apps that handle their own updates (Chrome, Slack, etc.) in both scheduled checks and upgrades
 - **Auto cleanup** — Automatically runs standard `brew cleanup` after upgrades, with an optional deep-prune style for power users
 - **Deep cache prune** — Manually run `brew cleanup --prune=all`, or opt Auto Cleanup into it from the Cleanup submenu
@@ -98,7 +99,7 @@ TopOff keeps itself up to date after that, so you don't need to upgrade it throu
 ## Usage
 
 1. Click the beer mug icon in your menu bar
-2. See which packages need updating. With more than five, the last one is followed by **Show All** (for example, **Show All 8 Packages…**), which opens every package with its version details
+2. See which packages need updating. With more than five, the last one is followed by **Show All** (for example, **Show All 8 Packages…**), which opens every package with its version details. Packages in a release cooldown show how long they have left, for example **(in 3 days)**
 3. Choose **Update All**, **Update All (Greedy)**, or update individual packages
 4. Watch the icon animate while updates run
 5. Check the menu to see what was upgraded and how much disk space was freed. The five most recent packages are listed, and any others are in the **More** submenu
@@ -112,6 +113,8 @@ All preferences are available under the **Options** submenu:
 - **Cleanup** — Run standard cleanup, run **Deep Cache Prune…**, or choose the saved **Auto Cleanup Style**
 - **Auto Cleanup Style** — Defaults to standard `brew cleanup`. Power users can opt into `brew cleanup --prune=all` after a confirmation step. This removes Homebrew cached downloads to reclaim more disk space, but does not uninstall apps or command line tools.
 - **Greedy Mode** — Always check and update everything, including apps that auto-update themselves (off by default — see [Greedy Mode explained](#whats-the-difference-between-update-all-and-greedy))
+- **Release Cooldown**: Wait a few days before offering a new version (off by default). Choose 3, 7, 10 or 14 days. Waiting packages show how long they have left, and **Update Now** in a package's submenu skips the wait
+- **Applies To**: Appears once the cooldown is on. **Casks Only** (default) holds back apps downloaded from their makers; **All Packages** holds back command-line tools too
 - **Notifications** — Show a desktop banner when an update finishes (on by default)
 - **Check Interval** — How often TopOff checks for outdated packages:
 - **View Update History** — See recently updated packages with version changes

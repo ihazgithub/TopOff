@@ -1,5 +1,17 @@
 # Changelog
 
+## v2.3 — Unreleased
+
+### New
+
+- **Release cooldown (optional):** TopOff can now wait a few days before offering a new version, so a bad or compromised release has time to be caught and pulled before it reaches your Mac. Turn it on under **Options > Release Cooldown** and pick 3, 7, 10 or 14 days. By default it applies to casks only, the apps Homebrew downloads straight from their makers; choose **All Packages** under **Applies To** to hold back command-line tools too. Waiting packages still show in the menu with how long they have left, and **Update Now** skips the wait for any one of them. Thanks to @theangrydev for building this.
+
+### Notes
+
+- The cooldown is off until you turn it on. The wait counts from when TopOff first sees a new version, so anything already waiting when you switch it on starts its wait from that moment.
+
+---
+
 ## v2.2.3 — November 2026
 
 ### Fixes
