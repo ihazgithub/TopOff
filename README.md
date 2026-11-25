@@ -17,6 +17,10 @@
 </p>
 
 <p align="center">
+  <strong>New:</strong> Install TopOff with Homebrew using <code>brew install --cask ihazgithub/tap/topoff</code>
+</p>
+
+<p align="center">
   <em>Version 2.2.3: updates keep going when Homebrew's refresh step fails. <a href="CHANGELOG.md">See what's new →</a></em>
 </p>
 
@@ -71,6 +75,14 @@ When an update run finishes, TopOff can post a desktop notification so you don't
 1. Download the [latest DMG](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v2.2.3.dmg)
 2. Open the DMG and drag TopOff to your Applications folder
 3. Launch TopOff. It's signed and notarized by Apple, so it opens immediately on first launch — no trip through Privacy & Security needed.
+
+### Homebrew
+
+```sh
+brew install --cask ihazgithub/tap/topoff
+```
+
+TopOff keeps itself up to date after that, so you don't need to upgrade it through Homebrew.
 
 ### Build from Source
 
