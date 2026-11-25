@@ -16,6 +16,11 @@ final class DisplayVersionTests: XCTestCase {
         XCTAssertEqual(DisplayVersion.abbreviate("1.0,12345678"), "1.0")
     }
 
+    func testIgnoresDownloadSizeSavedBeforeTheFix() {
+        XCTAssertEqual(DisplayVersion.abbreviate("9.1            (22.3MB)"), "9.1")
+        XCTAssertEqual(DisplayVersion.abbreviate("12.23.0        (24MB)"), "12.23.0")
+    }
+
     func testLeavesCleanSemverUnchanged() {
         XCTAssertEqual(DisplayVersion.abbreviate("126.3.12"), "126.3.12")
     }

@@ -90,6 +90,38 @@ final class BrewServiceTests: XCTestCase {
         XCTAssertEqual(packages.first?.name, "node")
     }
 
+    func testParseUpgradeOutputDropsDownloadSizes() {
+        // Homebrew 7 ends each summary row with the download size.
+        let output = """
+        ==> Upgrading 2 outdated packages:
+        ffmpeg      9.0  -> 9.1            (22.3MB)
+        fluid-synth 2.6.2 -> 2.6.3          (964.9KB)
+        """
+
+        let packages = BrewService.parseUpgradeOutput(output)
+
+        XCTAssertEqual(packages.map(\.name), ["ffmpeg", "fluid-synth"])
+        XCTAssertEqual(packages.map(\.newVersion), ["9.1", "2.6.3"])
+    }
+
+    func testParseUpgradeOutputReadsDependencyUpgrades() {
+        let output = """
+        ==> Upgrading 1 outdated package:
+        node 26.13.1_3 -> 26.13.1_4 (21.3MB)
+        ==> Upgrading node dependency: simdutf (9.4.0 -> 9.5.0)
+        ==> Installing node dependency: merve (1.2.2_6)
+        ==> Upgrading node
+          26.13.1_3 -> 26.13.1_4
+        """
+
+        let packages = BrewService.parseUpgradeOutput(output)
+
+        XCTAssertEqual(packages.map(\.name), ["node", "simdutf"])
+        XCTAssertEqual(packages[0].newVersion, "26.13.1_4")
+        XCTAssertEqual(packages[1].oldVersion, "9.4.0")
+        XCTAssertEqual(packages[1].newVersion, "9.5.0")
+    }
+
     func testParseUpgradeOutputHandlesColumnAlignedSummary() {
         // Newer Homebrew prints the upgrade summary as a column-aligned table:
         // the name and old-version columns are padded with runs of spaces so
@@ -116,7 +148,7 @@ final class BrewServiceTests: XCTestCase {
         XCTAssertEqual(packages.map(\.name), ["pnpm", "warp", "docker-desktop"])
         XCTAssertEqual(packages.count, 3)
         XCTAssertEqual(packages[0].oldVersion, "11.8.0")
-        XCTAssertEqual(packages[0].newVersion, "11.9.0 (4MB)")
+        XCTAssertEqual(packages[0].newVersion, "11.9.0")
         XCTAssertEqual(packages[1].oldVersion, "0.2026.06.10.09.27.stable_01")
         XCTAssertEqual(packages[2].oldVersion, "4.78.0,229452")
         XCTAssertEqual(packages[2].newVersion, "4.79.0,230596")
@@ -375,6 +407,37 @@ final class BrewServiceTests: XCTestCase {
             XCTFail("a failing brew outdated should fail the check, as it did before")
         } catch {
             // Expected: the fallback's own failure is what's reported
+        }
+    }
+
+    func testOutdatedCheckCarriesOnWhenBrewUpdateFails() async throws {
+        // A failed `brew update` used to fail every check and Update All
+        let brew = try makeFakeBrew("""
+        case "$*" in
+          update) echo "Error: Fetching /opt/homebrew/Library/Taps/someone/homebrew-tap failed!" >&2; exit 1 ;;
+          "outdated --verbose --formula") echo "node (20.1.0) < 22.0.0" ;;
+        esac
+        """)
+
+        let packages = try await BrewService(brewPath: brew).checkOutdated()
+
+        XCTAssertEqual(packages.map(\.name), ["node"])
+    }
+
+    func testOutdatedCheckStillFailsWhenBrewUpdateIsOffline() async throws {
+        // Offline still fails, so the check is retried when the network returns
+        let brew = try makeFakeBrew("""
+        case "$*" in
+          update) echo "curl: (6) Could not resolve host: github.com" >&2; exit 1 ;;
+          "outdated --verbose --formula") echo "node (20.1.0) < 22.0.0" ;;
+        esac
+        """)
+
+        do {
+            _ = try await BrewService(brewPath: brew).checkOutdated()
+            XCTFail("an offline brew update should fail the check")
+        } catch BrewError.networkUnavailable {
+            // Expected
         }
     }
 

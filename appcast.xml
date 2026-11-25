@@ -3,6 +3,15 @@
     <channel>
         <title>TopOff</title>
         <item>
+            <title>2.2.3</title>
+            <pubDate>Tue, 24 Nov 2026 18:58:23 -0700</pubDate>
+            <link>https://github.com/ihazgithub/TopOff</link>
+            <sparkle:version>15</sparkle:version>
+            <sparkle:shortVersionString>2.2.3</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/ihazgithub/TopOff/releases/download/v2.2.3/TopOff-v2.2.3.dmg" length="8209055" type="application/octet-stream" sparkle:edSignature="ugDeObuh6X2TuF5z9AgOhCQZ3AizeHE3BvSWMp3BOn6yI9jKgQN4NOCGcykhFQEQ6Tp2+YUhW6O7ijLjjq84CQ=="/>
+        </item>
+        <item>
             <title>2.2.2</title>
             <pubDate>Sat, 14 Nov 2026 15:44:26 -0700</pubDate>
             <link>https://github.com/ihazgithub/TopOff</link>
@@ -19,15 +28,6 @@
             <sparkle:shortVersionString>2.2.1</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <enclosure url="https://github.com/ihazgithub/TopOff/releases/download/v2.2.1/TopOff-v2.2.1.dmg" length="8183033" type="application/octet-stream" sparkle:edSignature="O4F5oucwAfMNMQwOeb0NuGP69H7ZEk929/mEZMyo4py6bbpPC0L1rUEii+vNInf+mkhhKV9xtjmLFKX3iSDaAQ=="/>
-        </item>
-        <item>
-            <title>2.2</title>
-            <pubDate>Mon, 28 Sep 2026 14:19:46 -0700</pubDate>
-            <link>https://github.com/ihazgithub/TopOff</link>
-            <sparkle:version>12</sparkle:version>
-            <sparkle:shortVersionString>2.2</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/ihazgithub/TopOff/releases/download/v2.2/TopOff-v2.2.dmg" length="8170823" type="application/octet-stream" sparkle:edSignature="zmny6MzesMiCbQF1PPakkWBe6empkBtAdN2rkAIzyjq7dnlMBOHwfQ2KrvFXTdSVtph3lNHX4dHBHCnrKeCRDw=="/>
         </item>
     </channel>
 </rss>
