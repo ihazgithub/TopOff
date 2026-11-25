@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.2.3 — November 2026
+
+### Fixes
+
+- **Updates no longer stall when Homebrew's refresh fails:** before checking or updating, TopOff asks Homebrew to refresh its package lists. If that one step failed, TopOff used to give up on the whole run, so **Update All** would spin and then change nothing. Now TopOff carries on with the lists Homebrew already has, and your updates go through. Only being offline still stops a check, and TopOff tries again when you're back online.
+- **Problems show up in the menu:** when a check or update fails, the menu now says what went wrong, even with notifications turned off. **Copy Error Details** puts Homebrew's full message on the clipboard if you want to look into it or report it.
+- **Correct versions with the latest Homebrew:** Homebrew now lists download sizes next to new versions, and TopOff sometimes showed the size instead (ffmpeg 9.1 appeared as **22.3**). TopOff reads the right version again, including in history saved before this fix. Dependencies upgraded along with a package now show under their own names.
+
+### Notes
+
+- If you're on 2.1 or later, TopOff offers this update automatically.
+- Existing settings and history carry over; no manual migration needed.
+- Supports macOS 14 and later. Universal binary for Apple Silicon and Intel.
+
+---
+
 ## v2.2.2 — November 2026
 
 ### Fixes

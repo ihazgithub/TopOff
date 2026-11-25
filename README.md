@@ -13,11 +13,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v2.2.2.dmg">Download TopOff for macOS</a>
+  <a href="https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v2.2.3.dmg">Download TopOff for macOS</a>
 </p>
 
 <p align="center">
-  <em>Version 2.2.2: safer handling of your admin password. <a href="CHANGELOG.md">See what's new →</a></em>
+  <em>Version 2.2.3: updates keep going when Homebrew's refresh step fails. <a href="CHANGELOG.md">See what's new →</a></em>
 </p>
 
 If you use Homebrew, you have probably forgotten to run `brew update && brew upgrade` for weeks at a time. TopOff checks quietly in the background, shows outdated packages from the menu bar, and lets you update with one click.
@@ -68,7 +68,7 @@ When an update run finishes, TopOff can post a desktop notification so you don't
 
 ### Download (Recommended)
 
-1. Download the [latest DMG](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v2.2.2.dmg)
+1. Download the [latest DMG](https://github.com/ihazgithub/TopOff/releases/latest/download/TopOff-v2.2.3.dmg)
 2. Open the DMG and drag TopOff to your Applications folder
 3. Launch TopOff. It's signed and notarized by Apple, so it opens immediately on first launch — no trip through Privacy & Security needed.
 
