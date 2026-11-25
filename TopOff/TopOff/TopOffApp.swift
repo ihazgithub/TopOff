@@ -30,6 +30,24 @@ struct TopOffApp: App {
                 Divider()
             }
 
+            // Last failure, kept until the next run so it's seen even with
+            // notifications off
+            if let failure = viewModel.lastFailure, !viewModel.isRunning {
+                Menu {
+                    Text(failure.suggestion)
+                    Divider()
+                    Button("Copy Error Details") {
+                        viewModel.copyFailureDetails()
+                    }
+                    Button("Dismiss") {
+                        viewModel.dismissFailure()
+                    }
+                } label: {
+                    Label(failure.title, systemImage: "exclamationmark.triangle")
+                }
+                Divider()
+            }
+
             // Outdated packages with version details
             if !viewModel.visibleOutdatedPackages.isEmpty {
                 let visible = viewModel.visibleOutdatedPackages

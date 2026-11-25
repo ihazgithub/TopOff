@@ -20,6 +20,7 @@ enum DisplayVersion {
     /// - `"1.10628.2,deee0a7"` → `"1.10628.2"`
     /// - `"126.4.12"` → `"126.4.12"`
     static func abbreviate(_ version: String) -> String {
+        let version = removingDownloadSize(version)
         let nsString = version as NSString
         let range = NSRange(location: 0, length: nsString.length)
         let matches = Self.dottedNumberRegex?.matches(in: version, range: range) ?? []
@@ -46,6 +47,25 @@ enum DisplayVersion {
         }
         return version
     }
+
+    /// Drops the download size Homebrew 7 appends to its upgrade summary
+    /// ("9.1            (22.3MB)" → "9.1"). Without this the size, being
+    /// the longer dotted number, won `abbreviate`, so ffmpeg 9.1 showed as
+    /// "22.3". History saved before the fix still carries the size.
+    static func removingDownloadSize(_ version: String) -> String {
+        let nsString = version as NSString
+        let range = NSRange(location: 0, length: nsString.length)
+        guard let match = downloadSizeRegex?.firstMatch(in: version, range: range) else {
+            return version
+        }
+        return nsString.substring(to: match.range.location)
+    }
+
+    /// Whitespace, then a parenthesized size such as "(159.2KB)" or
+    /// "(1.2GB)", at the end of the string.
+    private static let downloadSizeRegex: NSRegularExpression? = {
+        try? NSRegularExpression(pattern: #"\s+\(\d+(?:\.\d+)?\s?(?:B|KB|MB|GB|TB)\)\s*$"#)
+    }()
 
     /// One or more digits, then one-or-more `.<digits>` groups. Matches the
     /// classic `X.Y`, `X.Y.Z`, `X.Y.Z.W`, etc.

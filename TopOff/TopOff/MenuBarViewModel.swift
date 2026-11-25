@@ -69,6 +69,9 @@ final class MenuBarViewModel: ObservableObject {
     @Published var lastCleanupResult: CleanupResult?
     @Published private(set) var isRunning = false
     @Published var statusMessage: String?
+    /// The last check or update that failed, shown in the menu so a failure
+    /// is visible with notifications off. Cleared when the next run starts.
+    @Published private(set) var lastFailure: FailureReport?
     @Published private(set) var updateProgress: UpdateProgressSnapshot?
     /// Name of the package a single-package Update is working on, if any.
     @Published private(set) var packageBeingUpgraded: String?
@@ -198,6 +201,7 @@ final class MenuBarViewModel: ObservableObject {
 
         Task {
             isRunning = true
+            lastFailure = nil
             iconState = .checking
             statusMessage = "Checking for updates..."
             var packagesToUpdate: [OutdatedPackage] = []
@@ -303,6 +307,7 @@ final class MenuBarViewModel: ObservableObject {
 
         Task {
             isRunning = true
+            lastFailure = nil
             packageBeingUpgraded = package.name
             iconState = .updating
             statusMessage = "Updating \(package.name)..."
@@ -396,6 +401,7 @@ final class MenuBarViewModel: ObservableObject {
 
         Task {
             isRunning = true
+            lastFailure = nil
             statusMessage = deepPruneAll ? "Deep pruning Homebrew cache..." : "Cleaning up..."
 
             do {
@@ -437,6 +443,7 @@ final class MenuBarViewModel: ObservableObject {
         guard !isRunning else { return false }
 
         isRunning = true
+        lastFailure = nil
         iconState = .checking
         statusMessage = "Checking for updates..."
 
@@ -453,6 +460,7 @@ final class MenuBarViewModel: ObservableObject {
             // previously-discovered outdated packages are still pending.
             updateIconState()
             print("Failed to check for updates: \(error)")
+            lastFailure = failureReport(for: error, fallbackTitle: "Couldn't check for updates")
         }
 
         statusMessage = nil
@@ -513,10 +521,31 @@ final class MenuBarViewModel: ObservableObject {
     }
 
     private func notifyFailure(_ error: Error, fallbackTitle: String = "Update couldn't complete") {
+        let report = failureReport(for: error, fallbackTitle: fallbackTitle)
+        lastFailure = report
+        notificationManager.showCompletionNotification(success: false, title: report.title, body: report.suggestion)
+    }
+
+    private func failureReport(for error: Error, fallbackTitle: String) -> FailureReport {
         let friendly = (error as? LocalizedError)
-        let title = friendly?.errorDescription ?? fallbackTitle
-        let body  = friendly?.recoverySuggestion ?? "Try again, or run brew doctor in Terminal for diagnosis."
-        notificationManager.showCompletionNotification(success: false, title: title, body: body)
+        return FailureReport(
+            title: friendly?.errorDescription ?? fallbackTitle,
+            suggestion: friendly?.recoverySuggestion ?? "Try again, or run brew doctor in Terminal for diagnosis.",
+            details: extractErrorOutput(from: error)
+        )
+    }
+
+    /// Put the failed run's Homebrew output on the clipboard, for a bug
+    /// report or a search.
+    func copyFailureDetails() {
+        guard let lastFailure else { return }
+        let text = lastFailure.details.isEmpty ? lastFailure.title : lastFailure.details
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+    }
+
+    func dismissFailure() {
+        lastFailure = nil
     }
 
     private func updateIconState() {
@@ -831,4 +860,12 @@ final class MenuBarViewModel: ObservableObject {
         return Set(array)
     }
 
+}
+
+/// What went wrong in the last failed check or update.
+struct FailureReport: Equatable {
+    let title: String
+    let suggestion: String
+    /// Homebrew's output from the command that failed.
+    let details: String
 }

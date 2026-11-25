@@ -240,6 +240,11 @@ final class BrewService: @unchecked Sendable {
         self.brewPath = Self.findBrewPath()
     }
 
+    /// For tests: runs the brew at `brewPath`, such as a script standing in for it.
+    init(brewPath: String?) {
+        self.brewPath = brewPath
+    }
+
     static func findBrewPath() -> String? {
         #if DEBUG
         // Demo/testing hook: lets a debug build talk to a stand-in brew
@@ -272,7 +277,7 @@ final class BrewService: @unchecked Sendable {
         }
 
         // Run brew update first to refresh package info
-        _ = try await runCommand(brewPath, arguments: ["update"])
+        try await refreshPackageLists(brewPath)
 
         // Then check what's outdated with verbose output for version info
         var outdatedArgs = ["outdated", "--verbose"]
@@ -281,6 +286,23 @@ final class BrewService: @unchecked Sendable {
         }
         let output = try await runCommand(brewPath, arguments: outdatedArgs)
         return Self.parseOutdatedVerbose(output)
+    }
+
+    /// Runs `brew update`. If it fails for any reason other than being
+    /// offline (a tap that won't fetch, a hiccup in Homebrew's own update
+    /// step), carry on with the package lists already on disk: `brew
+    /// outdated` and `brew upgrade` still work, and failing here blocked
+    /// every check and update with nothing to show for it. Offline still
+    /// fails, so the check is retried once the network comes back.
+    private func refreshPackageLists(_ brewPath: String) async throws {
+        do {
+            _ = try await runCommand(brewPath, arguments: ["update"])
+        } catch BrewError.commandFailed(let output) {
+            if case .networkUnavailable = BrewError.classify(output: output) {
+                throw BrewError.networkUnavailable(output)
+            }
+            print("brew update failed; continuing with current package lists:\n\(output)")
+        }
     }
 
     func updateAll(
@@ -293,7 +315,7 @@ final class BrewService: @unchecked Sendable {
         }
 
         // Run brew update
-        _ = try await runCommand(brewPath, arguments: ["update"])
+        try await refreshPackageLists(brewPath)
 
         guard !packages.isEmpty else {
             return UpdateResult(packages: [], timestamp: Date())
@@ -421,6 +443,13 @@ final class BrewService: @unchecked Sendable {
                 continue
             }
 
+            // A dependency upgraded along with the package that needs it:
+            // "==> Upgrading node dependency: simdutf (9.4.0 -> 9.5.0)"
+            if let package = parseDependencyUpgradeLine(trimmedLine) {
+                capture(package)
+                continue
+            }
+
             // Pattern 1: "package 1.0 -> 2.0" or "==> Upgrading package 1.0 -> 2.0"
             // This captures version transitions from summary lines and upgrade messages
             if line.contains(" -> ") {
@@ -442,7 +471,10 @@ final class BrewService: @unchecked Sendable {
                     let leftParts = parts[0]
                         .split(whereSeparator: { $0 == " " || $0 == "\t" })
                         .map(String.init)
-                    let newVersion = parts[1].trimmingCharacters(in: .whitespaces)
+                    // Homebrew 7 ends summary rows with the download size,
+                    // "1.98 -> 1.99    (159.2KB)"; keep only the version.
+                    let newVersion = DisplayVersion.removingDownloadSize(parts[1])
+                        .trimmingCharacters(in: .whitespaces)
                     if leftParts.count >= 2 {
                         let name = leftParts.dropLast().joined(separator: " ")
                         let oldVersion = leftParts.last ?? ""
@@ -496,6 +528,27 @@ final class BrewService: @unchecked Sendable {
 
         return packages
     }
+
+    /// Parses "==> Upgrading node dependency: simdutf (9.4.0 -> 9.5.0)" into
+    /// simdutf 9.4.0 → 9.5.0. A dependency installed for the first time
+    /// ("==> Installing node dependency: simdutf (9.5.0)") isn't an upgrade,
+    /// so only lines with an arrow count.
+    nonisolated static func parseDependencyUpgradeLine(_ line: String) -> UpgradedPackage? {
+        let nsLine = line as NSString
+        let range = NSRange(location: 0, length: nsLine.length)
+        guard let match = dependencyUpgradeRegex?.firstMatch(in: line, range: range) else {
+            return nil
+        }
+        return UpgradedPackage(
+            name: nsLine.substring(with: match.range(at: 1)),
+            oldVersion: nsLine.substring(with: match.range(at: 2)),
+            newVersion: nsLine.substring(with: match.range(at: 3))
+        )
+    }
+
+    private nonisolated static let dependencyUpgradeRegex: NSRegularExpression? = {
+        try? NSRegularExpression(pattern: #"^==> Upgrading \S+ dependency: (\S+) \((\S+) -> (\S+)\)$"#)
+    }()
 
     nonisolated static func upgradingPackageName(from line: String) -> String? {
         let trimmedLine = line.trimmingCharacters(in: .whitespaces)
